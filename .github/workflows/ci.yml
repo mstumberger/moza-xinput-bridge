@@ -1,0 +1,78 @@
+name: CI
+
+# On demand only, to save CI minutes: nothing runs on a plain push or PR update.
+#  - PR to main with the label "build": runs when the label is added and on every
+#    push to the PR while the label stays. Remove the label to stop.
+#  - Actions > CI > Run workflow: any branch, by hand.
+# Each run runs the unit tests, builds release with warnings as errors and uploads
+# a dev build named "<version>-<commit>". Releases are built from their tag
+# (release.yml).
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    # PR: only with the "build" label; a labeled event only for that label (adding
+    # another label must not start a run).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (contains(github.event.pull_request.labels.*.name, 'build') &&
+       (github.event.action != 'labeled' || github.event.label.name == 'build'))
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust (stable, MSVC)
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+
+      - name: Cache cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Build (release)
+        env:
+          RUSTFLAGS: -D warnings
+        run: cargo build --release --locked
+
+      # Dev build for testing, named "<version>-<commit>"; on a PR the PR's head
+      # commit, not GitHub's merge commit.
+      - name: Package dev build
+        id: pkg
+        shell: pwsh
+        run: |
+          $sha = "${{ github.event.pull_request.head.sha || github.sha }}".Substring(0, 7)
+          $ver = (Select-String -Path Cargo.toml -Pattern '^version = "([^"]+)"').Matches[0].Groups[1].Value
+          $id = "$ver-$sha"
+          .\tools\package.ps1 -Version $id
+          "id=$id" >> $env:GITHUB_OUTPUT
+
+      - name: Upload dev build
+        uses: actions/upload-artifact@v7
+        with:
+          name: moza-xinput-bridge-${{ steps.pkg.outputs.id }}
+          path: dist/*
+          retention-days: 30
+          compression-level: 0

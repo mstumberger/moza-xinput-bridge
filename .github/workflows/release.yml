@@ -1,0 +1,107 @@
+name: Release build
+
+# Builds the app and diagnostics, stamped with the version from the release tag
+# (vX.Y.Z), and attaches them to the GitHub release:
+#   moza-xinput-bridge-<version>-windows-x64.zip   app + hid-probe + pedal_log + docs
+#   moza-xinput-bridge-<version>.exe               the app alone
+#   SHA256SUMS.txt
+#
+# The build always runs from the exact tagged commit (traceability); the
+# version-bump commit is only pushed back to the target branch AFTER a
+# successful build, rebased on the branch tip so a moved branch doesn't
+# reject the push.
+#
+# To make a release: create a GitHub release with a tag like "v0.4.0"
+# targeting main. Everything else is automatic.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout the tagged commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Resolve version from tag
+        id: ver
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.release.tag_name }}"
+          $version = $tag -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Release tag '$tag' is not a version tag (expected vX.Y.Z)"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Install Rust (stable, MSVC)
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+
+      - name: Cache cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: Bump version in Cargo.toml
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $content = Get-Content Cargo.toml -Raw
+          # Only the [package] version: the first top-level `version = ` line.
+          $content = ([regex]'(?m)^version = "[^"]*"').Replace($content, "version = `"$version`"", 1)
+          Set-Content Cargo.toml $content -NoNewline
+          git diff --stat
+
+      - name: Test
+        run: cargo test
+
+      - name: Build (release)
+        run: cargo build --release
+
+      - name: Package
+        shell: pwsh
+        run: .\tools\package.ps1 -Version "${{ steps.ver.outputs.version }}"
+
+      - name: Upload artifacts to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: gh release upload ${{ github.event.release.tag_name }} (Get-ChildItem dist).FullName --clobber
+
+      - name: Commit and push version bump (only after a successful build)
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Cargo.toml Cargo.lock
+          if (git diff --cached --quiet) {
+            Write-Host "Version already at ${{ steps.ver.outputs.version }} - nothing to commit"
+            exit 0
+          }
+          git commit -m "Bump version to ${{ steps.ver.outputs.version }} [skip ci]"
+          $branch = "${{ github.event.release.target_commitish }}"
+          # Rebase the bump onto the current branch tip so a moved branch
+          # doesn't reject the push; one retry is enough in practice.
+          git fetch origin $branch
+          git rebase origin/$branch
+          git push origin HEAD:$branch
