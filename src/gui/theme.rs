@@ -14,6 +14,11 @@ pub const PANEL: Color32 = Color32::from_rgb(0x16, 0x19, 0x1C);
 pub const SURFACE: Color32 = Color32::from_rgb(0x1E, 0x22, 0x26);
 pub const SURFACE_HOVER: Color32 = Color32::from_rgb(0x26, 0x2B, 0x30);
 pub const BORDER: Color32 = Color32::from_rgb(0x2E, 0x34, 0x3A);
+/// Slider rails, unchecked switch tracks and widget outlines: clearly lighter
+/// than `SURFACE` so controls are visible on dark surfaces.
+pub const RAIL: Color32 = Color32::from_rgb(0x3F, 0x47, 0x4F);
+pub const RAIL_HOVER: Color32 = Color32::from_rgb(0x55, 0x5E, 0x68);
+pub const OUTLINE: Color32 = Color32::from_rgb(0x5A, 0x63, 0x6C);
 pub const TEXT: Color32 = Color32::from_rgb(0xE6, 0xE8, 0xEA);
 pub const TEXT_MUTED: Color32 = Color32::from_rgb(0x8B, 0x93, 0x9B);
 pub const ACCENT: Color32 = Color32::from_rgb(0xA3, 0xE6, 0x35);
@@ -60,7 +65,9 @@ pub fn apply(ctx: &egui::Context) {
     v.warn_fg_color = WARN;
     v.error_fg_color = BAD;
 
-    v.selection.bg_fill = ACCENT.gamma_multiply(0.35);
+    // Also the slider's trailing fill.
+    v.selection.bg_fill = ACCENT.gamma_multiply(0.6);
+    v.slider_trailing_fill = true;
     v.selection.stroke = Stroke::new(1.0, ACCENT);
 
     let w = &mut v.widgets;
@@ -69,20 +76,25 @@ pub fn apply(ctx: &egui::Context) {
     w.noninteractive.bg_stroke = Stroke::new(1.0, BORDER);
     w.noninteractive.fg_stroke = Stroke::new(1.0, TEXT);
 
-    w.inactive.bg_fill = SURFACE;
+    // `bg_fill` is the slider rail and the checkbox box; `weak_bg_fill` the
+    // button face.
+    w.inactive.bg_fill = RAIL;
     w.inactive.weak_bg_fill = SURFACE;
-    w.inactive.bg_stroke = Stroke::new(1.0, BORDER);
+    w.inactive.bg_stroke = Stroke::new(1.0, OUTLINE);
     w.inactive.fg_stroke = Stroke::new(1.0, TEXT);
 
-    w.hovered.bg_fill = SURFACE_HOVER;
+    w.hovered.bg_fill = RAIL_HOVER;
     w.hovered.weak_bg_fill = SURFACE_HOVER;
-    w.hovered.bg_stroke = Stroke::new(1.0, BORDER);
+    w.hovered.bg_stroke = Stroke::new(1.0, OUTLINE);
     w.hovered.fg_stroke = Stroke::new(1.5, TEXT);
 
+    // egui takes `.strong()` text from `active.fg_stroke`, so it must be
+    // light. Pressed widgets are therefore neutral with an accent outline;
+    // accent-filled buttons set their own dark text explicitly.
     w.active.bg_fill = ACCENT;
-    w.active.weak_bg_fill = ACCENT;
+    w.active.weak_bg_fill = RAIL;
     w.active.bg_stroke = Stroke::new(1.0, ACCENT);
-    w.active.fg_stroke = Stroke::new(2.0, ACCENT_TEXT);
+    w.active.fg_stroke = Stroke::new(1.5, TEXT);
 
     w.open.bg_fill = SURFACE_HOVER;
     w.open.weak_bg_fill = SURFACE_HOVER;

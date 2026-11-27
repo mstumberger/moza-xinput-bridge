@@ -2,7 +2,38 @@
 //! so the running view can be checked without hardware. Pure functions of
 //! elapsed seconds; nothing here opens a device or touches the bridge.
 
+use std::sync::atomic::{AtomicBool, AtomicU32};
+use std::sync::{Arc, Mutex};
+
+use crate::gui::ffb_test::FfbTest;
 use crate::hid::state::DeviceState;
+
+/// Preview only: an inert `FfbTest` (no thread, no device) so the OPEN state of
+/// the FFB test section can be laid out without hardware. Nothing ever reads
+/// its `torque_cmd` or `pulse_req`.
+pub fn dummy_ffb_test() -> FfbTest {
+    FfbTest {
+        run: Arc::new(AtomicBool::new(false)),
+        torque_cmd: Arc::new(Mutex::new(0)),
+        thread: None,
+        strength_pct: 30.0,
+        steer: Arc::new(AtomicU32::new(u32::MAX)),
+        pulse_req: Arc::new(AtomicBool::new(false)),
+        pulse_strength: Arc::new(AtomicU32::new(30f32.to_bits())),
+        pulse_result: Arc::new(Mutex::new(
+            "OK: force works in both directions
+left pulse: net +4210 counts (peak 4800)
+right pulse: net -4105 counts (peak 4650)
+(full lock-to-lock = 65535 counts)"
+                .into(),
+        )),
+    }
+}
+
+/// Raw steering value (0..=65535, centre 32768) matching `state_at(t).steer`.
+pub fn raw_steer_at(t: f64) -> u32 {
+    (32768.0 + state_at(t).steer * 32768.0).clamp(0.0, 65535.0) as u32
+}
 
 /// Whether the environment asks for the preview. Read once at startup.
 pub fn enabled() -> bool {

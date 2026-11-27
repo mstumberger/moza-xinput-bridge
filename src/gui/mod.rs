@@ -56,6 +56,8 @@ pub struct MozaMapperApp {
     /// the wheel view is checked without hardware.
     pub(crate) preview: bool,
     pub(crate) preview_start: Instant,
+    /// Preview only: inert stand-in for the open FFB test (see `preview.rs`).
+    pub(crate) preview_ffb_test: Option<FfbTest>,
 }
 
 impl MozaMapperApp {
@@ -89,6 +91,7 @@ impl MozaMapperApp {
             probe,
             preview: preview::enabled(),
             preview_start: Instant::now(),
+            preview_ffb_test: None,
         }
     }
 }

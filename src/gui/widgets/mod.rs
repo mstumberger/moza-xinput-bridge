@@ -4,6 +4,7 @@ use eframe::egui::{self, Color32, CornerRadius, Painter, Pos2, Sense, Shape, Str
 
 use crate::gui::theme;
 
+pub mod controls;
 pub mod pedals;
 pub mod wheel;
 pub mod wheel_layout;
@@ -130,7 +131,6 @@ pub fn status_pill(ui: &mut egui::Ui, label: &str, text: &str, level: Level) -> 
 }
 
 /// Switch-style toggle with a label; accent track when on.
-#[allow(dead_code)]
 pub fn toggle(ui: &mut egui::Ui, on: &mut bool, label: &str) -> egui::Response {
     let track = Vec2::new(36.0, 20.0);
     let inner = ui.horizontal(|ui| {
@@ -146,18 +146,19 @@ pub fn toggle(ui: &mut egui::Ui, on: &mut bool, label: &str) -> egui::Response {
             let fill = if *on {
                 theme::ACCENT
             } else if response.hovered() {
-                theme::SURFACE_HOVER
+                theme::RAIL_HOVER
             } else {
-                theme::SURFACE
+                theme::RAIL
             };
+            let outline = if *on { theme::ACCENT } else { theme::OUTLINE };
             p.rect_filled(rect, radius, fill);
-            p.rect_stroke(rect, radius, Stroke::new(1.0, theme::BORDER), StrokeKind::Inside);
+            p.rect_stroke(rect, radius, Stroke::new(1.0, outline), StrokeKind::Inside);
             let knob_r = track.y / 2.0 - 3.0;
             let x = egui::lerp(
                 (rect.left() + knob_r + 3.0)..=(rect.right() - knob_r - 3.0),
                 t,
             );
-            let knob = if *on { theme::ACCENT_TEXT } else { theme::TEXT_MUTED };
+            let knob = if *on { theme::ACCENT_TEXT } else { theme::TEXT };
             p.circle_filled(Pos2::new(x, rect.center().y), knob_r, knob);
         }
         if ui.add(egui::Label::new(label).sense(Sense::click())).clicked() {
@@ -170,7 +171,6 @@ pub fn toggle(ui: &mut egui::Ui, on: &mut bool, label: &str) -> egui::Response {
 }
 
 /// Muted, small, wrapped text.
-#[allow(dead_code)]
 pub fn note(ui: &mut egui::Ui, text: &str) {
     ui.add(
         egui::Label::new(
@@ -183,7 +183,6 @@ pub fn note(ui: &mut egui::Ui, text: &str) {
 }
 
 /// Card tinted by level: bold first line, muted lines below.
-#[allow(dead_code)]
 pub fn result_card(ui: &mut egui::Ui, level: Level, title: &str, lines: &[String]) {
     let color = level.color();
     egui::Frame::new()
