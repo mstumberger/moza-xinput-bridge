@@ -4,18 +4,17 @@ use eframe::egui::{self, Color32, CornerRadius, Painter, Pos2, Sense, Shape, Str
 
 use crate::gui::theme;
 
-#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Level {
     Good,
     Neutral,
+    #[allow(dead_code)]
     Warn,
     Bad,
 }
 
 impl Level {
     /// Foreground colour for icons and text of this level.
-    #[allow(dead_code)]
     pub fn color(self) -> Color32 {
         match self {
             Level::Good => theme::ACCENT,
@@ -68,7 +67,6 @@ pub fn icon_warning(painter: &Painter, center: Pos2, size: f32, color: Color32) 
     painter.circle_filled(center + Vec2::new(0.0, h * 0.5), 1.0, color);
 }
 
-#[allow(dead_code)]
 pub fn icon_chevron_right(painter: &Painter, center: Pos2, size: f32, color: Color32) {
     let h = size * 0.3;
     let pts = vec![
@@ -79,7 +77,6 @@ pub fn icon_chevron_right(painter: &Painter, center: Pos2, size: f32, color: Col
     painter.add(Shape::line(pts, Stroke::new(1.5, color)));
 }
 
-#[allow(dead_code)]
 pub fn icon_chevron_down(painter: &Painter, center: Pos2, size: f32, color: Color32) {
     let h = size * 0.3;
     let pts = vec![
@@ -105,7 +102,6 @@ pub fn icon_for_level(painter: &Painter, level: Level, center: Pos2, size: f32) 
 // -------------------------------------------------------------- widgets
 
 /// Small filled dot plus `label: text`, on a surface-coloured pill.
-#[allow(dead_code)]
 pub fn status_pill(ui: &mut egui::Ui, label: &str, text: &str, level: Level) -> egui::Response {
     let color = level.color();
     let font = egui::FontId::proportional(theme::SIZE_PILL);
@@ -250,4 +246,73 @@ pub fn checklist_row(
             });
         });
     clicked
+}
+
+/// Accordion item. `open_id` holds the id of the open section ("" = none).
+/// Clicking a closed header sets it to `id`; clicking the open header sets it
+/// to "". The body is drawn only while open. Returns true when `open_id` was
+/// changed by this call.
+pub fn section(
+    ui: &mut egui::Ui,
+    id: &str,
+    title: &str,
+    status: &str,
+    open_id: &mut String,
+    body: impl FnOnce(&mut egui::Ui),
+) -> bool {
+    let is_open = open_id == id;
+    let width = ui.available_width();
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 34.0), Sense::click());
+    let response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
+    if ui.is_rect_visible(rect) {
+        let p = ui.painter();
+        let fill = if response.hovered() {
+            theme::SURFACE_HOVER
+        } else if is_open {
+            theme::SURFACE
+        } else {
+            theme::PANEL
+        };
+        let radius = CornerRadius::same(theme::RADIUS);
+        p.rect_filled(rect, radius, fill);
+        p.rect_stroke(rect, radius, Stroke::new(1.0, theme::BORDER), StrokeKind::Inside);
+        let chev = Pos2::new(rect.left() + 16.0, rect.center().y);
+        if is_open {
+            icon_chevron_down(p, chev, 16.0, theme::TEXT);
+        } else {
+            icon_chevron_right(p, chev, 16.0, theme::TEXT_MUTED);
+        }
+        p.text(
+            Pos2::new(rect.left() + 32.0, rect.center().y),
+            egui::Align2::LEFT_CENTER,
+            title,
+            egui::FontId::proportional(theme::SIZE_SECTION_TITLE),
+            theme::TEXT,
+        );
+        if !status.is_empty() {
+            p.text(
+                Pos2::new(rect.right() - 12.0, rect.center().y),
+                egui::Align2::RIGHT_CENTER,
+                status,
+                egui::FontId::proportional(theme::SIZE_SMALL),
+                theme::TEXT_MUTED,
+            );
+        }
+    }
+    let mut changed = false;
+    if response.clicked() {
+        *open_id = if is_open { String::new() } else { id.to_string() };
+        changed = true;
+    }
+    if open_id == id {
+        egui::Frame::new()
+            .fill(theme::SURFACE)
+            .corner_radius(CornerRadius::same(theme::RADIUS))
+            .inner_margin(egui::Margin::same(theme::SECTION_PADDING as i8))
+            .show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                body(ui);
+            });
+    }
+    changed
 }

@@ -9,6 +9,17 @@ impl MozaMapperApp {
         self.wizard_thread.as_ref().is_some_and(|t| !t.is_finished())
     }
 
+    /// Pick up a finished wizard's result. Runs every frame from `update`,
+    /// independent of which accordion section is open.
+    pub(crate) fn poll_wizard_result(&mut self) {
+        if let Some(mapping) = self.wizard_result.lock().unwrap().take() {
+            self.config.mapping = mapping;
+            if let Err(e) = self.config.save() {
+                self.config_error = Some(e);
+            }
+        }
+    }
+
     pub(crate) fn start_wizard(&mut self) {
         if self.wizard_running() || self.running {
             return;

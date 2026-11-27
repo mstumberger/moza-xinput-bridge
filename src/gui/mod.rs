@@ -98,41 +98,113 @@ impl eframe::App for MozaMapperApp {
             self.running = false;
         }
 
+        // Per-frame logic that must not depend on which section is open.
+        self.poll_wizard_result();
+
         panels::top_bar::show(self, ctx);
+        self.error_banner(ctx);
+        self.right_column(ctx);
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            // Surface config errors — never swallow them.
-            if let Some(err) = &self.config_error {
-                ui.colored_label(theme::BAD, format!("Config error: {}", err));
-                ui.separator();
-            }
-            if let Some(err) = self.state.last_error.lock().unwrap().clone() {
-                ui.horizontal(|ui| {
-                    ui.colored_label(theme::BAD, &err);
-                    if ui.small_button("×").clicked() {
-                        *self.state.last_error.lock().unwrap() = None;
-                    }
-                });
-                ui.separator();
-            }
-
-            panels::ffb::show(self, ui);
-            ui.add_space(10.0);
-
-            panels::ffb_test::show(self, ui, ctx);
-            ui.add_space(10.0);
-
-            panels::lights::show(self, ui);
-            ui.add_space(10.0);
-
-            panels::mapping::show(self, ui);
-            ui.add_space(10.0);
-
-            panels::diagnostics::show(self, ui);
+        let central = egui::Frame::new()
+            .fill(theme::BG)
+            .inner_margin(egui::Margin::same(theme::COLUMN_PADDING as i8));
+        egui::CentralPanel::default().frame(central).show(ctx, |ui| {
+            panels::left_live::show(self, ui);
         });
     }
 }
 
+impl MozaMapperApp {
+    /// Red banner under the top bar for config and bridge errors (spec 4.2).
+    fn error_banner(&mut self, ctx: &egui::Context) {
+        let last_error = self.state.last_error.lock().unwrap().clone();
+        if self.config_error.is_none() && last_error.is_none() {
+            return;
+        }
+        let frame = egui::Frame::new()
+            .fill(theme::BAD.gamma_multiply(0.15))
+            .stroke(egui::Stroke::new(1.0, theme::BAD.gamma_multiply(0.6)))
+            .inner_margin(egui::Margin::symmetric(theme::COLUMN_PADDING as i8, 8));
+        egui::TopBottomPanel::top("error_banner")
+            .frame(frame)
+            .show(ctx, |ui| {
+                if let Some(err) = &self.config_error {
+                    ui.add(
+                        egui::Label::new(
+                            egui::RichText::new(format!("Config error: {}", err))
+                                .color(theme::BAD),
+                        )
+                        .wrap(),
+                    );
+                }
+                if let Some(err) = last_error {
+                    ui.horizontal_top(|ui| {
+                        if ui.small_button("\u{00d7}").clicked() {
+                            *self.state.last_error.lock().unwrap() = None;
+                        }
+                        ui.add(
+                            egui::Label::new(egui::RichText::new(err).color(theme::BAD)).wrap(),
+                        );
+                    });
+                }
+            });
+    }
+
+    /// Fixed-width right column with the accordion (spec 4, 5).
+    fn right_column(&mut self, ctx: &egui::Context) {
+        let ffb_status = if self.config.ffb_enabled { "On" } else { "Off" };
+        let test_status = if self.ffb_test.is_some() { "Open" } else { "" };
+        let lights_status = if self.config.rpm_lights.enabled { "On" } else { "Off" };
+
+        let mut open = self.config.ui.open_section.clone();
+        let mut changed = false;
+        let frame = egui::Frame::new()
+            .fill(theme::PANEL)
+            .stroke(egui::Stroke::new(1.0, theme::BORDER))
+            .inner_margin(egui::Margin::same(8));
+        egui::SidePanel::right("sections")
+            .exact_width(theme::RIGHT_COLUMN_WIDTH)
+            .resizable(false)
+            .frame(frame)
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.spacing_mut().item_spacing.y = 6.0;
+                        changed |= widgets::section(ui, "ffb", "Force feedback", ffb_status, &mut open, |ui| {
+                            panels::ffb::show(self, ui)
+                        });
+                        changed |= widgets::section(ui, "ffb_test", "FFB test", test_status, &mut open, |ui| {
+                            panels::ffb_test::show(self, ui, ctx)
+                        });
+                        changed |= widgets::section(ui, "lights", "Shift lights", lights_status, &mut open, |ui| {
+                            panels::lights::show(self, ui)
+                        });
+                        changed |= widgets::section(ui, "mapping", "Button mapping", "", &mut open, |ui| {
+                            panels::mapping::show(self, ui)
+                        });
+                        changed |= widgets::section(ui, "diagnostics", "Diagnostics", "", &mut open, |ui| {
+                            panels::diagnostics::show(self, ui)
+                        });
+                    });
+            });
+
+        // Safety: the push buttons only run while their body is drawn. If the
+        // section is collapsed, make sure no held command is left behind.
+        if open != "ffb_test" {
+            if let Some(test) = &self.ffb_test {
+                *test.torque_cmd.lock().unwrap() = 0;
+            }
+        }
+
+        if changed {
+            self.config.ui.open_section = open;
+            if let Err(e) = self.config.save() {
+                self.config_error = Some(e);
+            }
+        }
+    }
+}
 impl Drop for MozaMapperApp {
     fn drop(&mut self) {
         // Cancel the wizard first so its (potentially 30 s) waits return
