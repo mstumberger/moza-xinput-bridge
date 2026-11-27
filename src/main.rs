@@ -35,8 +35,13 @@ fn init_logging() {
 fn main() -> eframe::Result<()> {
     init_logging();
 
+    // Window/taskbar icon; the same drawing is embedded in the exe by build.rs.
+    let icon = eframe::icon_data::from_png_bytes(include_bytes!("../assets/icon-256.png"))
+        .expect("embedded icon is a valid PNG");
+
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
+            .with_icon(std::sync::Arc::new(icon))
             .with_inner_size([960.0, 640.0])
             .with_min_inner_size([820.0, 560.0])
             .with_title("MOZA XInput Bridge"),
