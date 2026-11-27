@@ -167,6 +167,10 @@ fn apply_cmd(cmd: Cmd, cfg: &RpmLightsConfig, shared: &AtomicU16) -> u16 {
 /// the i-th threshold. Thresholds are evenly spaced from `start_pct` to
 /// `end_pct` of max RPM across `num_leds` lights.
 pub fn mask_for_rpm(rpm: u16, cfg: &RpmLightsConfig) -> u16 {
+    // Engine off: always dark, even when the first light is set to 0 %.
+    if rpm == 0 {
+        return 0;
+    }
     let max = cfg.max_rpm.max(1) as f32;
     let pct = (rpm as f32 / max * 100.0).clamp(0.0, 100.0);
     let n = cfg.num_leds.clamp(1, 16) as u32;
@@ -257,4 +261,13 @@ mod tests {
         apply_cmd(Cmd::Rpm(10_000), &c, &handle.mask);
         assert_eq!(handle.current_mask(), 0x3FF);
     }
+    #[test]
+    fn zero_start_is_a_rev_bar_from_idle() {
+        let cfg = RpmLightsConfig { start_pct: 0, end_pct: 100, max_rpm: 9000, num_leds: 10, ..RpmLightsConfig::default() };
+        assert_eq!(mask_for_rpm(0, &cfg), 0, "engine off is dark");
+        assert_eq!(mask_for_rpm(10, &cfg), 0b1, "any rpm lights the first LED");
+        assert_eq!(mask_for_rpm(4500, &cfg).count_ones(), 6);
+        assert_eq!(mask_for_rpm(9000, &cfg), 0x3FF);
+    }
+
 }
