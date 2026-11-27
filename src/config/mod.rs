@@ -83,8 +83,8 @@ impl MappingConfig {
             ("DPAD_RIGHT", 6),
             ("DPAD_DOWN", 7),
             ("DPAD_LEFT", 8),
-            ("LB", 17),
-            ("RB", 18),
+            ("LB", 13),
+            ("RB", 14),
             ("Guide", 38),
             ("Back", 35),
             ("Start", 36),
@@ -321,8 +321,8 @@ mod tests {
         assert_eq!(m.lookup("DPAD_RIGHT"), 6);
         assert_eq!(m.lookup("DPAD_DOWN"), 7);
         assert_eq!(m.lookup("DPAD_LEFT"), 8);
-        assert_eq!(m.lookup("LB"), 17);
-        assert_eq!(m.lookup("RB"), 18);
+        assert_eq!(m.lookup("LB"), 13);
+        assert_eq!(m.lookup("RB"), 14);
         assert_eq!(m.lookup("Guide"), 38);
         assert_eq!(m.lookup("Back"), 35);
         assert_eq!(m.lookup("Start"), 36);

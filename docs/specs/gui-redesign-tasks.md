@@ -114,7 +114,7 @@ Spec: section 7, 4.4, 8.2.
   runs.
 
 Done when: tests pass and the preview shows rotation, lit buttons with
-labels, a chip for button 17, pedal bars and the LED strip. Captures:
+labels (LB on the left paddle), a chip for button 17, pedal bars and the LED strip. Captures:
 `shots/t5-a.png`, `shots/t5-b.png` taken about 2 seconds apart, and
 `shots/t5-narrow.png` at 820x560.
 

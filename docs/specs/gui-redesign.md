@@ -322,10 +322,11 @@ pub fn to_screen(p: Vec2, angle_rad: f32, center: Pos2, r: f32) -> Pos2
   - Side spokes: polygons joining the plate to the rim,
     left (-0.60,-0.06) (-0.82,-0.10) (-0.82,0.10) (-0.60,0.14), right mirrored.
 - Centre badge: hexagon radius 0.12 at (0, 0.02), colour `SURFACE`, no text.
-- Paddles (decorative unless listed in 7.3), rounded rectangles, colour
-  `SURFACE`: upper pair centred (-0.66,-0.22) and (0.66,-0.22), size
-  0.12 x 0.26; lower pair centred (-0.62,0.34) and (0.62,0.34), size
-  0.12 x 0.30.
+- Paddles: one paddle per side, drawn as two rounded rectangles each (the
+  part visible above the side spoke and the part below it), colour
+  `SURFACE`: upper parts centred (-0.66,-0.22) and (0.66,-0.22), size
+  0.12 x 0.26; lower parts centred (-0.62,0.34) and (0.62,0.34), size
+  0.12 x 0.30. Button 13 lights both left parts, button 14 both right parts.
 
 ### 7.3 Button layout
 
@@ -342,8 +343,8 @@ wheel button numbers used everywhere in this app.
 | 6 | -0.35 | 0.04 | round | D-pad right |
 | 7 | -0.43 | 0.12 | round | D-pad down |
 | 8 | -0.51 | 0.04 | round | D-pad left |
-| 13 | -0.66 | -0.22 | paddle | upper left paddle |
-| 14 | 0.66 | -0.22 | paddle | upper right paddle |
+| 13 | -0.66 | -0.22 | paddle | left paddle (LB), verified on hardware |
+| 14 | 0.66 | -0.22 | paddle | right paddle (RB), verified on hardware |
 | 19 | -0.49 | -0.14 | round | |
 | 20 | -0.39 | -0.19 | round | |
 | 21 | -0.23 | -0.11 | round | |
@@ -387,7 +388,7 @@ Unit tests: no duplicate button numbers; every spot lies inside the rim
 
 Any wheel button that is pressed but has no entry in `ES_WHEEL_LAYOUT` (for
 example 9 to 12, 15 to 18, 26 to 31) appears as a chip in a row under the
-wheel: `17 LB`, lit in accent. This row is not rotated. It guarantees every
+wheel: `17`, or `17 LB` when it is mapped, lit in accent. This row is not rotated. It guarantees every
 press is visible even if the layout table is incomplete.
 
 ### 7.6 Shift lights on the wheel

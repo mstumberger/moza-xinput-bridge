@@ -91,8 +91,8 @@ Wheel button numbers are 1-based (Joystick Gremlin numbering).
 
 | Xbox | Wheel | Xbox | Wheel |
 |---|---|---|---|
-| A | 1 | LB | 17 |
-| B | 2 | RB | 18 |
+| A | 1 | LB (left paddle) | 13 |
+| B | 2 | RB (right paddle) | 14 |
 | X | 3 | LS | 33 |
 | Y | 4 | RS | 34 |
 | D-pad U/R/D/L | 5/6/7/8 | Back | 35 |

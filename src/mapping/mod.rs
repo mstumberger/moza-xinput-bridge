@@ -106,8 +106,8 @@ mod tests {
         assert_eq!(apply(&state_with(&[6]), &cfg), X360Button::DPAD_RIGHT.bits());
         assert_eq!(apply(&state_with(&[7]), &cfg), X360Button::DPAD_DOWN.bits());
         assert_eq!(apply(&state_with(&[8]), &cfg), X360Button::DPAD_LEFT.bits());
-        assert_eq!(apply(&state_with(&[17]), &cfg), X360Button::LEFT_SHOULDER.bits());
-        assert_eq!(apply(&state_with(&[18]), &cfg), X360Button::RIGHT_SHOULDER.bits());
+        assert_eq!(apply(&state_with(&[13]), &cfg), X360Button::LEFT_SHOULDER.bits());
+        assert_eq!(apply(&state_with(&[14]), &cfg), X360Button::RIGHT_SHOULDER.bits());
         assert_eq!(apply(&state_with(&[35]), &cfg), X360Button::BACK.bits());
         assert_eq!(apply(&state_with(&[36]), &cfg), X360Button::START.bits());
         assert_eq!(apply(&state_with(&[38]), &cfg), X360Button::GUIDE.bits());
