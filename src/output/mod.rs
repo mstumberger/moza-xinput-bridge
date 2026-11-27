@@ -46,7 +46,10 @@ pub struct X360Out {
 }
 
 impl X360Out {
-    pub fn create(ffb: Option<Arc<crate::ffb::FfbController>>) -> Result<Self> {
+    pub fn create(
+        ffb: Option<Arc<crate::ffb::FfbController>>,
+        lights: Option<Arc<crate::rpm::LightsHandle>>,
+    ) -> Result<Self> {
         let client = Client::connect()?;
 
         // Create and plug in the virtual controller ONCE; the handle is
@@ -72,20 +75,28 @@ impl X360Out {
             ffb_run: Arc::new(AtomicBool::new(false)),
         };
 
-        if let Some(ffb) = ffb {
+        if ffb.is_some() || lights.is_some() {
             // register_notification spawns the bus-side notification thread;
             // we drain its receiver on our own thread so FFB never blocks
-            // the input path.
+            // the input path. Rumble forwarding needs it even without FFB.
             let rx = out.target.register_notification()?;
             out.ffb_run.store(true, Ordering::SeqCst);
             let run = out.ffb_run.clone();
-            let thread_ffb = Arc::clone(&ffb);
+            let thread_ffb = ffb.clone();
+            let thread_lights = lights.clone();
             let ffb_thread = std::thread::Builder::new()
                 .name("ffb-notify".into())
                 .spawn(move || {
                     while run.load(Ordering::SeqCst) {
                         match rx.recv_timeout(Duration::from_millis(100)) {
-                            Ok(Ok(n)) => thread_ffb.on_motors(n.large_motor, n.small_motor),
+                            Ok(Ok(n)) => {
+                                if let Some(f) = &thread_ffb {
+                                    f.on_motors(n.large_motor, n.small_motor);
+                                }
+                                if let Some(l) = &thread_lights {
+                                    l.on_rumble(n.large_motor);
+                                }
+                            }
                             Ok(Err(e)) => {
                                 log::warn!("ViGEm notification error: {e}");
                             }
@@ -94,7 +105,7 @@ impl X360Out {
                         }
                     }
                 })?;
-            out.ffb = Some(ffb);
+            out.ffb = ffb;
             out.ffb_thread = Some(ffb_thread);
         }
 

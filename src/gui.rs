@@ -65,6 +65,15 @@ pub struct MozaMapperApp {
     // FFB manual test channel (vendor torque protocol, decoded from USBPcap)
     ffb_test: Option<FfbTest>,
     ffb_test_error: Option<String>,
+    // RPM shift lights (serial LED-bar channel, decoded from USBPcap)
+    lights: Option<crate::rpm::LightsController>,
+    lights_handle: Option<Arc<crate::rpm::LightsHandle>>,
+    lights_error: Option<String>,
+    manual_rpm: u16,
+    sweep_thread: Option<thread::JoinHandle<()>>,
+    sweep_run: Option<Arc<AtomicBool>>,
+    udp_thread: Option<thread::JoinHandle<()>>,
+    udp_run: Option<Arc<AtomicBool>>,
 }
 
 /// Manual FFB test: a thread streams the torque command at ~200 Hz while
@@ -125,6 +134,102 @@ impl MozaMapperApp {
             wizard_cancel: None,
             ffb_test: None,
             ffb_test_error: None,
+            lights: None,
+            lights_handle: None,
+            lights_error: None,
+            manual_rpm: 0,
+            sweep_thread: None,
+            sweep_run: None,
+            udp_thread: None,
+            udp_run: None,
+        }
+    }
+
+    /// Start the shift-light controller + UDP listener from the current
+    /// config. Threshold/max-rpm changes apply live via set_config; UDP
+    /// port changes need an off/on cycle.
+    fn start_lights(&mut self) {
+        if self.lights.is_some() {
+            return;
+        }
+        match crate::rpm::LightsController::start(self.config.rpm_lights.clone()) {
+            Ok(c) => {
+                let handle = c.handle();
+                if self.config.rpm_lights.udp_enabled {
+                    let run = Arc::new(AtomicBool::new(true));
+                    match crate::rpm::telemetry::spawn_udp_listener(
+                        Arc::clone(&handle),
+                        self.config.rpm_lights.udp_port,
+                        Arc::clone(&run),
+                    ) {
+                        Ok(t) => {
+                            self.udp_thread = Some(t);
+                            self.udp_run = Some(run);
+                        }
+                        Err(e) => {
+                            self.lights_error = Some(format!(
+                                "UDP listener (port {}) failed: {}",
+                                self.config.rpm_lights.udp_port, e
+                            ));
+                        }
+                    }
+                }
+                self.lights = Some(c);
+                self.lights_handle = Some(handle);
+                self.lights_error = None;
+            }
+            Err(e) => self.lights_error = Some(e),
+        }
+    }
+
+    fn stop_lights(&mut self) {
+        self.stop_sweep();
+        if let Some(run) = self.udp_run.take() {
+            run.store(false, Ordering::Relaxed);
+        }
+        if let Some(t) = self.udp_thread.take() {
+            let _ = t.join();
+        }
+        // Dropping the controller stops its thread and clears the bar.
+        self.lights = None;
+        self.lights_handle = None;
+    }
+
+    fn stop_sweep(&mut self) {
+        if let Some(run) = self.sweep_run.take() {
+            run.store(false, Ordering::Relaxed);
+        }
+        if let Some(t) = self.sweep_thread.take() {
+            let _ = t.join();
+        }
+    }
+
+    /// Sweep the bar 0 -> full -> 0 over ~2.5 s so the user can see all
+    /// lights and their order without telemetry.
+    fn start_sweep(&mut self) {
+        if let (Some(handle), None) = (&self.lights_handle, &self.sweep_thread) {
+            let handle = Arc::clone(handle);
+            let run = Arc::new(AtomicBool::new(true));
+            self.sweep_run = Some(Arc::clone(&run));
+            self.sweep_thread = Some(thread::spawn(move || {
+                let n = 10u32; // full bar regardless of config; it is a test
+                let step = Duration::from_millis(120);
+                for i in 0..=n {
+                    if !run.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    handle.send_mask(((1u32 << i) - 1) as u16);
+                    thread::sleep(step);
+                }
+                for i in (0..n).rev() {
+                    if !run.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    handle.send_mask(((1u32 << i) - 1) as u16);
+                    thread::sleep(step);
+                }
+                handle.send_mask(0);
+            }));
         }
     }
 
@@ -333,8 +438,9 @@ impl MozaMapperApp {
         let config = self.config.clone();
         let stop = Arc::new(AtomicBool::new(false));
         let stop_thread = Arc::clone(&stop);
+        let lights = self.lights_handle.clone();
 
-        let handle = thread::spawn(move || run_bridge(state, config, stop_thread));
+        let handle = thread::spawn(move || run_bridge(state, config, stop_thread, lights));
         self.bridge_handle = Some(handle);
         self.stop_flag = Some(stop);
         self.running = true;
@@ -355,7 +461,7 @@ impl MozaMapperApp {
 }
 
 /// Bridge thread: HID read → decode → map → ViGEm X360 update.
-fn run_bridge(state: AppState, config: AppConfig, stop: Arc<AtomicBool>) {
+fn run_bridge(state: AppState, config: AppConfig, stop: Arc<AtomicBool>, lights: Option<Arc<crate::rpm::LightsHandle>>) {
     let api = match hidapi::HidApi::new() {
         Ok(a) => a,
         Err(e) => {
@@ -416,7 +522,7 @@ fn run_bridge(state: AppState, config: AppConfig, stop: Arc<AtomicBool>) {
         state.ffb_active.store(c.enabled(), Ordering::Relaxed);
     }
 
-    let mut controller = match X360Out::create(ffb) {
+    let mut controller = match X360Out::create(ffb, lights) {
         Ok(c) => c,
         Err(e) => {
             state.set_error(format!(
@@ -721,6 +827,125 @@ impl eframe::App for MozaMapperApp {
             }
             ui.add_space(10.0);
 
+            // RPM shift lights — serial LED-bar channel (decoded from USBPcap).
+            ui.group(|ui| {
+                ui.label("RPM shift lights");
+                if let Some(err) = self.lights_error.clone() {
+                    ui.horizontal(|ui| {
+                        ui.colored_label(egui::Color32::RED, format!("Lights: {}", err));
+                        if ui.small_button("×").clicked() {
+                            self.lights_error = None;
+                        }
+                    });
+                }
+                let mut enabled = self.config.rpm_lights.enabled;
+                if ui.checkbox(&mut enabled, "Enable (opens the wheelbase serial port)").changed() {
+                    self.config.rpm_lights.enabled = enabled;
+                    if enabled {
+                        self.start_lights();
+                    } else {
+                        self.stop_lights();
+                    }
+                    if let Err(e) = self.config.save() {
+                        self.config_error = Some(e);
+                    }
+                }
+                if self.lights.is_some() {
+                    let mut cfg = self.config.rpm_lights.clone();
+                    let mut save = false;
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add(egui::DragValue::new(&mut cfg.max_rpm).range(500..=20_000).suffix(" rpm"))
+                            .changed()
+                        {
+                            self.manual_rpm = self.manual_rpm.min(cfg.max_rpm);
+                            save = true;
+                        }
+                        ui.label("Max RPM");
+                    });
+                    ui.horizontal(|ui| {
+                        if ui
+                            .add(egui::Slider::new(&mut cfg.num_leds, 1..=16).text("LEDs"))
+                            .changed()
+                        {
+                            save = true;
+                        }
+                        if ui
+                            .add(egui::Slider::new(&mut cfg.start_pct, 0..=99).text("First light %"))
+                            .changed()
+                        {
+                            cfg.end_pct = cfg.end_pct.max(cfg.start_pct + 1);
+                            save = true;
+                        }
+                        if ui
+                            .add(egui::Slider::new(&mut cfg.end_pct, 1..=100).text("Full bar %"))
+                            .changed()
+                        {
+                            cfg.start_pct = cfg.start_pct.min(cfg.end_pct.saturating_sub(1));
+                            save = true;
+                        }
+                    });
+                    let mut lights_on = self.lights_handle.is_some();
+                    ui.horizontal(|ui| {
+                        let mut udp = cfg.udp_enabled;
+                        if ui.checkbox(&mut udp, "UDP telemetry").changed() {
+                            cfg.udp_enabled = udp;
+                            save = true;
+                        }
+                        let mut port = cfg.udp_port as i32;
+                        if ui
+                            .add(egui::DragValue::new(&mut port).range(1024..=65535))
+                            .changed()
+                        {
+                            cfg.udp_port = port.clamp(1024, 65535) as u16;
+                            save = true;
+                        }
+                        ui.weak("port (restart lights to apply)");
+                        let _ = &mut lights_on;
+                    });
+                    let mut rumble = cfg.rumble_enabled;
+                    if ui
+                        .checkbox(&mut rumble, "Forward controller rumble to lights")
+                        .changed()
+                    {
+                        cfg.rumble_enabled = rumble;
+                        save = true;
+                    }
+                    if save {
+                        if let Some(h) = &self.lights_handle {
+                            h.set_config(cfg.clone());
+                        }
+                        self.config.rpm_lights = cfg;
+                        if let Err(e) = self.config.save() {
+                            self.config_error = Some(e);
+                        }
+                    }
+                    // Manual RPM value — drives the bar directly.
+                    let mut rpm = self.manual_rpm;
+                    if ui
+                        .add(
+                            egui::Slider::new(&mut rpm, 0..=self.config.rpm_lights.max_rpm)
+                                .text("Manual RPM"),
+                        )
+                        .changed()
+                    {
+                        self.manual_rpm = rpm;
+                        if let Some(h) = &self.lights_handle {
+                            h.send_rpm(rpm);
+                        }
+                    }
+                    let sweeping = self.sweep_thread.as_ref().is_some_and(|t| !t.is_finished());
+                    if sweeping {
+                        if ui.button("Stop test sweep").clicked() {
+                            self.stop_sweep();
+                        }
+                    } else if ui.button("Test sweep").clicked() {
+                        self.start_sweep();
+                    }
+                }
+            });
+            ui.add_space(10.0);
+
             // Mapping wizard
             ui.group(|ui| {
                 ui.label("Mapping wizard");
@@ -829,6 +1054,7 @@ impl Drop for MozaMapperApp {
             let _ = handle.join();
         }
         self.stop_ffb_test();
+        self.stop_lights();
         self.stop_bridge();
     }
 }
