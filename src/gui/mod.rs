@@ -4,6 +4,7 @@ mod bridge;
 mod ffb_test;
 mod lights;
 mod panels;
+mod preview;
 mod probe;
 mod state;
 mod theme;
@@ -13,7 +14,7 @@ mod wizard;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use eframe::egui;
 
@@ -49,6 +50,12 @@ pub struct MozaMapperApp {
     pub(crate) udp_run: Option<Arc<AtomicBool>>,
     // Environment probe: runs only while the bridge is stopped.
     pub(crate) probe: probe::Probe,
+    /// Debug preview, read once at startup from `MOZA_GUI_PREVIEW=1`: the left
+    /// column shows the running view fed by a synthetic device state (see
+    /// `preview.rs`), with no device opened. Intentionally permanent: it is how
+    /// the wheel view is checked without hardware.
+    pub(crate) preview: bool,
+    pub(crate) preview_start: Instant,
 }
 
 impl MozaMapperApp {
@@ -80,6 +87,8 @@ impl MozaMapperApp {
             udp_thread: None,
             udp_run: None,
             probe,
+            preview: preview::enabled(),
+            preview_start: Instant::now(),
         }
     }
 }
@@ -123,8 +132,8 @@ impl eframe::App for MozaMapperApp {
             .fill(theme::BG)
             .inner_margin(egui::Margin::same(theme::COLUMN_PADDING as i8));
         egui::CentralPanel::default().frame(central).show(ctx, |ui| {
-            if self.running {
-                panels::left_live::show(self, ui);
+            if self.running || self.preview {
+                panels::left_running::show(self, ui);
             } else {
                 panels::left_stopped::show(self, ui, ctx);
             }

@@ -4,6 +4,10 @@ use eframe::egui::{self, Color32, CornerRadius, Painter, Pos2, Sense, Shape, Str
 
 use crate::gui::theme;
 
+pub mod pedals;
+pub mod wheel;
+pub mod wheel_layout;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Level {
     Good,
