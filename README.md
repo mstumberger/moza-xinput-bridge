@@ -21,6 +21,10 @@ drives the wheelbase motor itself.
 - **FFB test panel**: push left/right at a chosen strength, live steering
   readout, and an automatic pulse test that *measures* wheel movement instead
   of relying on feel.
+- **RPM shift lights**: drives the wheelbase's LED bar over its CDC serial
+  port. Sources: a manual RPM slider and test sweep in the GUI, UDP telemetry
+  (port 26999: raw u16 LE, ASCII number, or `{"rpm": 7200}`; SimHub can feed
+  it), or rumble forwarded from the virtual controller.
 - **Button mapping wizard**: press the wheel button for each Xbox button;
   skipped entries keep their previous value.
 - **Persistent config**: button mapping, pedal calibration and FFB settings in
@@ -98,6 +102,17 @@ Wheel button numbers are 1-based (Joystick Gremlin numbering).
 | 3-16 | Seven u16 axes, idle `0x8000`; throttle 5-6, brake 11-12, clutch 15-16 (all travel upward when pressed) |
 | 17+ | Button bitmask from byte 17 bit 4 (bits 0-3 are status bits) |
 
+### Shift lights (CDC serial)
+
+The LED bar is not on the HID interface. The wheelbase also exposes a CDC
+serial port, and Pit House drives the lights with frames on its bulk-OUT
+endpoint:
+
+```
+7E <len:u8> <cmd:u16 LE> <data[len]> <cksum>     cksum = (sum of preceding bytes + 0x0D) & 0xFF
+cmd 0x1841, data FD DE 00 00 <mask:u16 BE>       bit i lights LED i
+```
+
 ### Force feedback
 
 The R3 exposes a standard HID PID interface (interface `MI_02`). FFB reports
@@ -136,6 +151,7 @@ src/config     persistent config, default R3 mapping
 src/mapping    1-based button mapping + learning wizard
 src/output     ViGEm X360 target, report builder, FFB notifications
 src/ffb        HID PID force feedback: report encoding, Win32 transport, torque channel
+src/rpm        shift lights: serial frame protocol, COM port transport, UDP telemetry
 src/gui.rs     egui UI: bridge control, live state, wizard, FFB settings and test
 src/bin        hid-probe and pedal_log diagnostics
 ```

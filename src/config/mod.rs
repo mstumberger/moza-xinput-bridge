@@ -113,12 +113,47 @@ impl MappingConfig {
     }
 }
 
+/// RPM shift-light settings. Thresholds are evenly spaced from `start_pct`
+/// to `end_pct` of `max_rpm` across `num_leds` lights.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct RpmLightsConfig {
+    pub enabled: bool,
+    pub max_rpm: u16,
+    pub num_leds: u8,
+    pub start_pct: u8,
+    pub end_pct: u8,
+    pub udp_enabled: bool,
+    pub udp_port: u16,
+    /// Forward the virtual controller's rumble (large motor) onto the light
+    /// bar. XInput has no RPM field; this is an approximation for games
+    /// that rumble near redline.
+    pub rumble_enabled: bool,
+}
+
+impl Default for RpmLightsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            max_rpm: 9_000,
+            num_leds: 10,
+            start_pct: 55,
+            end_pct: 100,
+            udp_enabled: true,
+            udp_port: 26999,
+            rumble_enabled: false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct AppConfig {
     pub mapping: MappingConfig,
     pub calibration: Calibration,
     pub ffb_enabled: bool,
     pub ffb_gain: f32,
+    /// Absent in older configs -> defaults (lights off).
+    #[serde(default)]
+    pub rpm_lights: RpmLightsConfig,
 }
 
 impl Default for AppConfig {
@@ -128,6 +163,7 @@ impl Default for AppConfig {
             calibration: Calibration::default(),
             ffb_enabled: true,
             ffb_gain: 1.0,
+            rpm_lights: RpmLightsConfig::default(),
         }
     }
 }
