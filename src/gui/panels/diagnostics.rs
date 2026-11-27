@@ -1,6 +1,6 @@
 use eframe::egui;
 
-use crate::gui::MozaMapperApp;
+use crate::gui::{theme, MozaMapperApp};
 use crate::mapping;
 
 pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui) {
@@ -14,9 +14,9 @@ pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui) {
 
     // Pedals are 0..1 — one convention everywhere.
     for (name, val, color) in [
-        ("Throttle", s.throttle, egui::Color32::GREEN),
-        ("Brake", s.brake, egui::Color32::RED),
-        ("Clutch", s.clutch, egui::Color32::BLUE),
+        ("Throttle", s.throttle, theme::ACCENT),
+        ("Brake", s.brake, theme::BAD),
+        ("Clutch", s.clutch, theme::INFO),
     ] {
         ui.horizontal(|ui| {
             ui.label(format!("{}: {:.2}", name, val));
@@ -35,10 +35,10 @@ pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui) {
     ui.heading("Buttons (1-based, Joystick Gremlin numbering)");
     let pressed = mapping::pressed_moza_buttons(&s);
     if pressed.is_empty() {
-        ui.colored_label(egui::Color32::GRAY, "No buttons pressed");
+        ui.colored_label(theme::TEXT_MUTED, "No buttons pressed");
     } else {
         ui.colored_label(
-            egui::Color32::GREEN,
+            theme::ACCENT,
             format!("Pressed: {:?}", pressed),
         );
     }
@@ -54,9 +54,9 @@ pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui) {
                     }
                     let pressed = s.buttons.get(n - 1).copied().unwrap_or(false);
                     let color = if pressed {
-                        egui::Color32::GREEN
+                        theme::ACCENT
                     } else {
-                        egui::Color32::DARK_GRAY
+                        theme::SURFACE
                     };
                     ui.add(
                         egui::Button::new(egui::RichText::new(n.to_string()).size(11.0))

@@ -5,6 +5,8 @@ mod ffb_test;
 mod lights;
 mod panels;
 mod state;
+mod theme;
+mod widgets;
 mod wizard;
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -47,7 +49,8 @@ pub struct MozaMapperApp {
 }
 
 impl MozaMapperApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        theme::apply(&cc.egui_ctx);
         let (config, config_error) = AppConfig::load_or_default();
         Self {
             state: AppState::new(),
@@ -100,12 +103,12 @@ impl eframe::App for MozaMapperApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             // Surface config errors — never swallow them.
             if let Some(err) = &self.config_error {
-                ui.colored_label(egui::Color32::RED, format!("Config error: {}", err));
+                ui.colored_label(theme::BAD, format!("Config error: {}", err));
                 ui.separator();
             }
             if let Some(err) = self.state.last_error.lock().unwrap().clone() {
                 ui.horizontal(|ui| {
-                    ui.colored_label(egui::Color32::RED, &err);
+                    ui.colored_label(theme::BAD, &err);
                     if ui.small_button("×").clicked() {
                         *self.state.last_error.lock().unwrap() = None;
                     }

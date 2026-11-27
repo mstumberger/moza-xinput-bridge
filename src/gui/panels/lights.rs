@@ -1,6 +1,6 @@
 use eframe::egui;
 
-use crate::gui::MozaMapperApp;
+use crate::gui::{theme, MozaMapperApp};
 
 pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui) {
     // RPM shift lights — serial LED-bar channel (decoded from USBPcap).
@@ -8,7 +8,7 @@ pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui) {
         ui.label("RPM shift lights");
         if let Some(err) = app.lights_error.clone() {
             ui.horizontal(|ui| {
-                ui.colored_label(egui::Color32::RED, format!("Lights: {}", err));
+                ui.colored_label(theme::BAD, format!("Lights: {}", err));
                 if ui.small_button("×").clicked() {
                     app.lights_error = None;
                 }

@@ -37,15 +37,15 @@ fn main() -> eframe::Result<()> {
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([820.0, 720.0])
-            .with_min_inner_size([640.0, 480.0])
-            .with_title("Moza Mapper — R3 to XInput Bridge"),
+            .with_inner_size([960.0, 640.0])
+            .with_min_inner_size([820.0, 560.0])
+            .with_title("MOZA XInput Bridge"),
         centered: true,
         ..Default::default()
     };
 
     eframe::run_native(
-        "Moza Mapper",
+        "MOZA XInput Bridge",
         options,
         Box::new(|cc| Ok(Box::new(gui::MozaMapperApp::new(cc)))),
     )

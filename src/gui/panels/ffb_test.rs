@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use eframe::egui;
 
-use crate::gui::MozaMapperApp;
+use crate::gui::{theme, MozaMapperApp};
 
 pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui, ctx: &egui::Context) {
     // FFB manual test — decoded vendor torque protocol.
@@ -12,7 +12,7 @@ pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui, ctx: &egui::Context) {
         ui.label("FFB test (direct torque)");
         if let Some(err) = app.ffb_test_error.clone() {
             ui.horizontal(|ui| {
-                ui.colored_label(egui::Color32::RED, format!("FFB test: {}", err));
+                ui.colored_label(theme::BAD, format!("FFB test: {}", err));
                 if ui.small_button("×").clicked() {
                     app.ffb_test_error = None;
                 }
@@ -81,11 +81,11 @@ pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui, ctx: &egui::Context) {
             let res = test.pulse_result.lock().unwrap().clone();
             if !res.is_empty() {
                 let color = if res.starts_with("OK") {
-                    egui::Color32::GREEN
+                    theme::ACCENT
                 } else if res.starts_with("NO FORCE") || res.starts_with("REVERSED") {
-                    egui::Color32::RED
+                    theme::BAD
                 } else {
-                    egui::Color32::YELLOW
+                    theme::WARN
                 };
                 ui.colored_label(color, res);
             }

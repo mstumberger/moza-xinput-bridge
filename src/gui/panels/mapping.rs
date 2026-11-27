@@ -2,7 +2,7 @@ use std::sync::atomic::Ordering;
 
 use eframe::egui;
 
-use crate::gui::MozaMapperApp;
+use crate::gui::{theme, MozaMapperApp};
 
 pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui) {
     // Mapping wizard
@@ -11,7 +11,7 @@ pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui) {
         if app.wizard_running() {
             let prompt = app.wizard_prompt.lock().unwrap().clone();
             if !prompt.is_empty() {
-                ui.colored_label(egui::Color32::YELLOW, &prompt);
+                ui.colored_label(theme::WARN, &prompt);
             }
             let log = app.wizard_log.lock().unwrap();
             for line in log.iter().rev().take(5) {
