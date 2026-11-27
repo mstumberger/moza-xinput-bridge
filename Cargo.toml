@@ -1,0 +1,40 @@
+[package]
+name = "moza-xinput-bridge"
+version = "0.3.0"
+edition = "2021"
+description = "MOZA R3 racing wheel to virtual Xbox 360 controller bridge with native HID PID force feedback"
+license = "MIT"
+readme = "README.md"
+keywords = ["moza", "racing-wheel", "xinput", "vigem", "force-feedback"]
+categories = ["hardware-support"]
+
+[dependencies]
+hidapi = "2.6"
+windows-sys = { version = "0.52", features = [
+    "Win32_Devices_HumanInterfaceDevice",
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+vigem-rust = "0.1.1"
+egui = "0.31"
+eframe = "0.31"
+log = "0.4"
+env_logger = "0.11"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[[bin]]
+name = "moza-xinput-bridge"
+path = "src/main.rs"
+
+[[bin]]
+name = "hid-probe"
+path = "src/bin/hid_probe.rs"

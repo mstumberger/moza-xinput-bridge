@@ -1,0 +1,81 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# External SDKs and dependencies
+MOZA_SDK/
+Moza2Joystick-main/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build artifacts
+/build/
+/dist/
+
+# Debug
+*.log
+*.dmp/
+
+# User-specific
+.env.local
+.env.*.local
+
+# Claude
+.claude/
+memory/
+MEMORY.md
+
+# Temporary files
+*.tmp
+*.temp
+
+# Archive files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Backup files
+*.bak
+*.backup
+
+# Node modules (if any)
+node_modules/
+
+# Python (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# Legacy prototype and internal planning notes (kept locally, not published)
+MozaXInputBridge/
+docs/superpowers/
+
+# Runtime config written next to the exe
+app.json
+app.json.tmp
+
+# Vendored hardware assets
+MOZA R5_R3 Wheelbase _ adapter for playseat - 7275842/
+*.msi
+*.3mf
+.worktrees/
+
+# USB captures (large, local only)
+captures/
