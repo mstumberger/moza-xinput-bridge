@@ -475,7 +475,10 @@ panels and calls these functions.
   and the auto pulse verdict rules.
 - Shift-light clamping rules and live `set_config`.
 - Shutdown order in `Drop`: wizard cancel and join, FFB test, lights, bridge.
-- Repaint: keep `request_repaint_after(16 ms)`.
+- Repaint: `request_repaint_after(16 ms)` while the window is visible. While
+  it is minimised or not visible, request a repaint only every 500 ms, so a
+  minimised app does almost no drawing work. (The tray, where the window is
+  hidden entirely, is Phase 2.)
 
 ## 11. Acceptance criteria
 

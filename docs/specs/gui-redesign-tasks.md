@@ -140,6 +140,9 @@ open section, `shots/t6-<id>.png`.
 Spec: section 11.
 
 - Go through all acceptance criteria and fix gaps. Check both window sizes.
+- Repaint throttle while minimised (spec section 10).
+- Wheel drawing polish: hub and spokes need more contrast against the
+  background and the rim.
 - Remove dead code and unused theme tokens; keep `MOZA_GUI_PREVIEW`.
 - README: replace the usage steps that describe the old layout, add a
   screenshot `docs/img/dashboard.png` (the preview running view) and mention

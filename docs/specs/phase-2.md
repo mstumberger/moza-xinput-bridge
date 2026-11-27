@@ -44,9 +44,19 @@ immediately, and no control in the GUI needs a restart to take effect.
 
 **Change.**
 
-- Minimise to the system tray (crate `tray-icon`), with a menu: Show,
-  Start/Stop bridge, Quit. Closing the window asks once whether to quit or
-  keep running in the tray, and remembers the answer.
+- Closing the main window sends the app to the system tray (crate
+  `tray-icon`) instead of quitting. The bridge, force feedback and shift
+  lights keep running. Tray menu: Show, Start/Stop bridge, Quit. The first
+  close shows a one-time hint that the app is still running in the tray.
+- **No rendering while in the tray.** The window is hidden, not just
+  minimised, and the GUI does no work: no repaint requests, no wheel
+  animation, no per-frame polling of bridge state. Only the worker threads
+  (bridge, FFB, lights, UDP listener) run. Anything the GUI polled per frame
+  must not be needed for correctness while hidden (for example the wizard
+  result pickup and the bridge-thread reconciliation run again on the first
+  frame after the window is shown). Target: under 0.5 % CPU from the GUI
+  thread while in the tray.
+- The environment probe (checklist) does not run while the window is hidden.
 - Options in a new `General` section: `Start with Windows` (per-user Run
   registry key), `Start minimised`, `Start the bridge automatically`.
 - Auto-start waits for the wheel: if it is not present, keep probing and start
@@ -57,7 +67,9 @@ taskbar auto-hide misbehave; test with taskbar auto-hide on. Requires an app
 icon (draw our own; no MOZA logo).
 
 **Done when.** After a reboot with the options on, the virtual controller is
-available without touching the app, and the tray menu controls it.
+available without touching the app, the tray menu controls it, closing the
+window keeps the bridge running, and the app uses no measurable GUI CPU while
+in the tray.
 
 ## 4. Pedal calibration UI
 
