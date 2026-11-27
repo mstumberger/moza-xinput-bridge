@@ -1,0 +1,161 @@
+name: Release build
+
+# Builds the app and diagnostics stamped with a version and publishes them on
+# a GitHub release:
+#   moza-xinput-bridge-<version>-windows-x64.zip   app + hid-probe + pedal_log + docs
+#   moza-xinput-bridge-<version>.exe               the app alone
+#   moza-xinput-bridge-<version>-screenshot.png    the dashboard
+#   SHA256SUMS.txt
+#
+# Two ways to make a release:
+#  1. Actions > Release build > Run workflow: pick the branch (normally main)
+#     and type the version, e.g. 0.0.1. The workflow builds that commit,
+#     creates the tag v0.0.1 and the release, and attaches the files.
+#     From a terminal: gh workflow run release.yml -f version=0.0.1
+#  2. Create a GitHub release with a tag like v0.0.1 yourself: the workflow
+#     builds the tagged commit and attaches the files to that release.
+#
+# The version is stamped into Cargo.toml for the build only. Nothing is pushed
+# back to the repository, so this works with branch protection on main.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 0.0.1 (a leading v is ignored)"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark as a pre-release"
+        required: false
+        type: boolean
+        default: false
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Resolve version
+        id: ver
+        shell: pwsh
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          $raw = if ($env:GITHUB_EVENT_NAME -eq 'release') { $env:RELEASE_TAG } else { $env:INPUT_VERSION }
+          $version = $raw.Trim() -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "'$raw' is not a version (expected X.Y.Z or vX.Y.Z)"
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=v$version"    >> $env:GITHUB_OUTPUT
+
+      # Manual run: the branch or tag picked in the UI. Release event: the tag.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Refuse to overwrite an existing release (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${{ steps.ver.outputs.tag }}" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            throw "Release ${{ steps.ver.outputs.tag }} already exists. Pick a new version or delete it first."
+          }
+          exit 0
+
+      - name: Install Rust (stable, MSVC)
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+
+      - name: Cache cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      - name: Stamp version into Cargo.toml (build only)
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $content = Get-Content Cargo.toml -Raw
+          # Only the [package] version: the first top-level `version = ` line.
+          $content = ([regex]'(?m)^version = "[^"]*"').Replace($content, "version = `"$version`"", 1)
+          Set-Content Cargo.toml $content -NoNewline
+          git diff --stat
+
+      - name: Test
+        run: cargo test
+
+      - name: Build (release)
+        env:
+          RUSTFLAGS: -D warnings
+        run: cargo build --release
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          .\tools\package.ps1 -Version $version
+          # Screenshot as a release asset; keep it out of the checksum list's way
+          # by regenerating the list afterwards.
+          Copy-Item docs\img\dashboard.png "dist\moza-xinput-bridge-$version-screenshot.png"
+          Get-ChildItem dist -File | Where-Object Name -ne 'SHA256SUMS.txt' | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
+          } | Set-Content dist\SHA256SUMS.txt -Encoding ascii
+          Get-ChildItem dist | Format-Table Name, Length -AutoSize
+
+      - name: Create the release (manual runs)
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $tag = "${{ steps.ver.outputs.tag }}"
+          $sha = git rev-parse HEAD
+          $shot = "https://github.com/${{ github.repository }}/releases/download/$tag/moza-xinput-bridge-$version-screenshot.png"
+          $notes = @"
+          ![MOZA XInput Bridge dashboard]($shot)
+
+          ## Download
+
+          - ``moza-xinput-bridge-$version-windows-x64.zip``: the app, ``hid-probe``, ``pedal_log``, README, license and the FFB notes
+          - ``moza-xinput-bridge-$version.exe``: the app alone
+          - ``SHA256SUMS.txt``: checksums
+
+          Requires the [ViGEm Bus Driver](https://github.com/nefarius/ViGEmBus/releases). The builds are not code-signed, so Windows SmartScreen may warn on first launch.
+          "@
+          Set-Content notes.md $notes -Encoding utf8
+          $flags = @('--title', "MOZA XInput Bridge $version", '--notes-file', 'notes.md', '--target', $sha, '--generate-notes')
+          if ('${{ inputs.prerelease }}' -eq 'true') { $flags += '--prerelease' }
+          gh release create $tag (Get-ChildItem dist -File).FullName @flags
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed" }
+
+      - name: Attach files to the release (release event)
+        if: github.event_name == 'release'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" (Get-ChildItem dist -File).FullName --clobber
+          if ($LASTEXITCODE -ne 0) { throw "gh release upload failed" }

@@ -52,10 +52,22 @@ its telemetry session shares the wheel's input report and can make the pedal
 axes jitter. **Close Pit House for clean pedal input** (`hid-probe --axislog`
 shows whether it is interfering).
 
+## Download
+
+Prebuilt Windows binaries are attached to every
+[release](https://github.com/mstumberger/moza-xinput-bridge/releases/latest):
+
+- `moza-xinput-bridge-<version>-windows-x64.zip`: the app, `hid-probe`,
+  `pedal_log`, README, license and the FFB notes
+- `moza-xinput-bridge-<version>.exe`: the app alone
+- `SHA256SUMS.txt`: checksums
+
+Builds are not code-signed, so Windows SmartScreen may warn on first launch.
+
 ## Build and run
 
 ```powershell
-git clone https://github.com/<you>/moza-xinput-bridge.git
+git clone https://github.com/mstumberger/moza-xinput-bridge.git
 cd moza-xinput-bridge
 cargo build --release
 .\target\release\moza-xinput-bridge.exe
@@ -163,6 +175,22 @@ src/bin        hid-probe and pedal_log diagnostics
   motor and cannot reproduce directional steering forces. The torque channel
   itself is fully directional (see the FFB test panel).
 - Only the R3 (PID `0x0005`) has been verified on hardware.
+
+## Releasing
+
+Create a GitHub release with a tag like `v0.4.0` targeting `main`. The
+[release workflow](.github/workflows/release.yml) builds from the tagged
+commit, attaches the zip, exe and checksums to the release, then pushes the
+version bump in `Cargo.toml` back to `main`.
+
+Dev builds: add the `build` label to a pull request, or run **Actions > CI >
+Run workflow**. The build is uploaded as a workflow artifact named
+`<version>-<commit>`. To package locally:
+
+```powershell
+cargo build --release
+powershell -ExecutionPolicy Bypass -File tools\package.ps1 -Version 0.4.0
+```
 
 ## Contributing
 
