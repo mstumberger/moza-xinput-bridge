@@ -96,9 +96,21 @@ impl MozaMapperApp {
     }
 }
 
+/// Repaint cadence: 16 ms while visible, 500 ms while minimised or hidden so a
+/// minimised app does almost no drawing work. Only the repaint is slowed; the
+/// per-frame logic in `update` still runs on every frame.
+fn repaint_interval(hidden: bool) -> Duration {
+    Duration::from_millis(if hidden { 500 } else { 16 })
+}
+
 impl eframe::App for MozaMapperApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.request_repaint_after(Duration::from_millis(16));
+        let hidden = ctx.input(|i| {
+            let vp = i.viewport();
+            vp.minimized.unwrap_or(false)
+                || vp.inner_rect.is_some_and(|r| r.width() <= 0.0 || r.height() <= 0.0)
+        });
+        ctx.request_repaint_after(repaint_interval(hidden));
 
         // Reconcile the running flag with actual thread liveness: the bridge
         // thread exits by itself on errors (wheel lost, ViGEm missing), and
@@ -205,7 +217,7 @@ impl MozaMapperApp {
                             panels::ffb::show(self, ui)
                         });
                         changed |= widgets::section(ui, "ffb_test", "FFB test", test_status, &mut open, |ui| {
-                            panels::ffb_test::show(self, ui, ctx)
+                            panels::ffb_test::show(self, ui)
                         });
                         changed |= widgets::section(ui, "lights", "Shift lights", lights_status, &mut open, |ui| {
                             panels::lights::show(self, ui)
@@ -250,5 +262,16 @@ impl Drop for MozaMapperApp {
         self.stop_lights();
         self.stop_bridge();
         self.probe.stop();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn repaint_is_slow_only_when_hidden() {
+        assert_eq!(repaint_interval(false), Duration::from_millis(16));
+        assert_eq!(repaint_interval(true), Duration::from_millis(500));
     }
 }

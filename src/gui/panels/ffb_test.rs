@@ -1,5 +1,4 @@
 use std::sync::atomic::Ordering;
-use std::time::Duration;
 
 use eframe::egui;
 
@@ -23,7 +22,7 @@ fn offset_pct(raw: u32) -> f32 {
     (raw as i32 - 32768) as f32 / 327.68
 }
 
-pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui, ctx: &egui::Context) {
+pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui) {
     // FFB manual test: decoded vendor torque protocol.
     controls::error_line(ui, "FFB test", &mut app.ffb_test_error);
     let mut close_ffb_test = false;
@@ -33,9 +32,9 @@ pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui, ctx: &egui::Context) {
         let test = app.preview_ffb_test.get_or_insert_with(preview::dummy_ffb_test);
         test.steer.store(preview::raw_steer_at(t), Ordering::Relaxed);
         let mut ignored = false; // closing does nothing in the preview
-        show_open(test, ui, ctx, &mut ignored);
+        show_open(test, ui, &mut ignored);
     } else if let Some(test) = &mut app.ffb_test {
-        show_open(test, ui, ctx, &mut close_ffb_test);
+        show_open(test, ui, &mut close_ffb_test);
     } else {
         ui.add(
             egui::Label::new(
@@ -52,7 +51,7 @@ pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui, ctx: &egui::Context) {
     }
 }
 
-fn show_open(test: &mut FfbTest, ui: &mut egui::Ui, ctx: &egui::Context, close: &mut bool) {
+fn show_open(test: &mut FfbTest, ui: &mut egui::Ui, close: &mut bool) {
     controls::slider_row(ui, "Strength", |ui| {
         ui.add(egui::Slider::new(&mut test.strength_pct, 5.0..=100.0).suffix(" %"))
     });
@@ -107,8 +106,6 @@ fn show_open(test: &mut FfbTest, ui: &mut egui::Ui, ctx: &egui::Context, close: 
         let rest: Vec<String> = lines.map(str::to_owned).collect();
         widgets::result_card(ui, verdict_level(&res), title, &rest);
     }
-    // Keep the live readout moving.
-    ctx.request_repaint_after(Duration::from_millis(30));
 
     if ui.button("Close FFB test").clicked() {
         *close = true;

@@ -2,8 +2,6 @@
 //!
 //! No colour literals may appear anywhere else in `src/gui/`.
 
-#![allow(dead_code)]
-
 use eframe::egui::{
     self, Color32, CornerRadius, FontFamily, FontId, Stroke, TextStyle, Vec2,
 };
@@ -26,8 +24,18 @@ pub const ACCENT_TEXT: Color32 = Color32::from_rgb(0x0F, 0x11, 0x13);
 pub const WARN: Color32 = Color32::from_rgb(0xF5, 0xB8, 0x3D);
 pub const BAD: Color32 = Color32::from_rgb(0xF0, 0x52, 0x4F);
 pub const INFO: Color32 = Color32::from_rgb(0x4B, 0xA3, 0xF5);
-pub const WHEEL_RIM: Color32 = Color32::from_rgb(0x2A, 0x2F, 0x34);
-pub const WHEEL_HUB: Color32 = Color32::from_rgb(0x1A, 0x1D, 0x20);
+pub const WHEEL_RIM: Color32 = Color32::from_rgb(0x38, 0x3F, 0x46);
+/// Thin darker line on the outer edge of the rim and lighter line on the inner
+/// edge, so the rim reads as a ring with a little depth.
+pub const WHEEL_RIM_DARK: Color32 = Color32::from_rgb(0x1B, 0x1F, 0x23);
+pub const WHEEL_RIM_LIGHT: Color32 = Color32::from_rgb(0x5C, 0x66, 0x70);
+/// Hub plate and spokes: lighter than `BG`, darker than the rim.
+pub const WHEEL_HUB: Color32 = Color32::from_rgb(0x22, 0x27, 0x2D);
+pub const WHEEL_HUB_EDGE: Color32 = Color32::from_rgb(0x55, 0x5E, 0x68);
+/// Idle buttons, paddles and unlit shift LEDs: visible on the hub, but quiet.
+pub const WHEEL_BUTTON: Color32 = Color32::from_rgb(0x34, 0x3B, 0x43);
+/// Idle button labels.
+pub const WHEEL_LABEL: Color32 = Color32::from_rgb(0xB0, 0xB8, 0xC0);
 
 // Sizes (spec 6.2).
 pub const SIZE_HEADING: f32 = 20.0;

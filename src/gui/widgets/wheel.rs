@@ -60,6 +60,18 @@ fn rounded_rect(cx: f32, cy: f32, w: f32, h: f32, rad: f32) -> Vec<Vec2> {
     pts
 }
 
+/// Points on a circle of `radius` (wheel space) from `from_deg` to `to_deg`,
+/// measured from +x towards +y.
+fn arc_pts(radius: f32, from_deg: f32, to_deg: f32) -> Vec<Vec2> {
+    const STEPS: usize = 6;
+    (0..=STEPS)
+        .map(|k| {
+            let a = (from_deg + (to_deg - from_deg) * k as f32 / STEPS as f32).to_radians();
+            v(radius * a.cos(), radius * a.sin())
+        })
+        .collect()
+}
+
 /// Screen direction of a D-pad arrow label.
 fn arrow_dir(label: &str) -> Option<Vec2> {
     match label {
@@ -109,58 +121,77 @@ impl WheelView<'_> {
             (self.steer.clamp(-1.0, 1.0) as f32 * self.steering_range_deg / 2.0).to_radians();
         let r = rect.width() / 2.0;
         let d = Draw { painter, angle, center: rect.center(), r };
-        let outline = Stroke::new(1.0, theme::BORDER);
-        let none = Stroke::NONE;
+        let hub = |fill: egui::Color32| Stroke::new(1.0, fill);
 
-        // Rim and top marker.
-        // A closed path stroke is centred on the line; egui 0.31 circle strokes
-        // are not, so the ring is built as a 96-gon.
-        let ring: Vec<Pos2> = (0..96)
-            .map(|k| {
-                let a = std::f32::consts::TAU * k as f32 / 96.0;
-                d.center + Vec2::new(a.cos(), a.sin()) * 0.90 * r
-            })
-            .collect();
-        painter.add(Shape::closed_line(ring, Stroke::new(0.20 * r, theme::WHEEL_RIM)));
+        // Rim: a ring (96-gon, since egui 0.31 circle strokes are not centred)
+        // with a dark outer and a light inner edge, and the top marker.
+        let circle = |radius: f32| -> Vec<Pos2> {
+            (0..96)
+                .map(|k| {
+                    let a = std::f32::consts::TAU * k as f32 / 96.0;
+                    d.center + Vec2::new(a.cos(), a.sin()) * radius * r
+                })
+                .collect()
+        };
+        painter.add(Shape::closed_line(circle(0.90), Stroke::new(0.20 * r, theme::WHEEL_RIM)));
+        painter.add(Shape::closed_line(circle(0.995), Stroke::new(1.5, theme::WHEEL_RIM_DARK)));
+        painter.add(Shape::closed_line(circle(0.805), Stroke::new(1.5, theme::WHEEL_RIM_LIGHT)));
         painter.line_segment(
             [d.pt(v(0.0, -0.99)), d.pt(v(0.0, -0.81))],
             Stroke::new((0.05 * r).max(2.0), theme::TEXT),
         );
 
-        // Spokes, then hub plates (convex pieces only).
-        let left_spoke = [v(-0.60, -0.06), v(-0.82, -0.10), v(-0.82, 0.10), v(-0.60, 0.14)];
-        let right_spoke: Vec<Vec2> = left_spoke.iter().map(|p| v(-p.x, p.y)).collect();
-        d.poly(&left_spoke, theme::WHEEL_HUB, none);
-        d.poly(&right_spoke, theme::WHEEL_HUB, none);
-        d.poly(
-            &[v(-0.14, 0.58), v(0.14, 0.58), v(0.20, 0.82), v(-0.20, 0.82)],
-            theme::WHEEL_HUB,
-            none,
-        );
-        d.poly(
-            &[
-                v(-0.56, -0.20),
-                v(-0.30, -0.27),
-                v(0.30, -0.27),
-                v(0.56, -0.20),
-                v(0.60, 0.16),
-                v(-0.60, 0.16),
-            ],
-            theme::WHEEL_HUB,
-            outline,
-        );
-        d.poly(
-            &[
-                v(-0.60, 0.16),
-                v(0.60, 0.16),
-                v(0.50, 0.36),
-                v(0.14, 0.60),
-                v(-0.14, 0.60),
-                v(-0.50, 0.36),
-            ],
-            theme::WHEEL_HUB,
-            outline,
-        );
+        // Hub fills first (spokes overlap the plates and run slightly into the
+        // rim, covering its inner edge), outlines afterwards on outer edges
+        // only, so no seam shows between touching pieces.
+        let spoke = |sign: f32| -> Vec<Vec2> {
+            let mut pts = vec![v(sign * 0.50, -0.046)];
+            pts.extend(arc_pts(0.806, -7.2, 7.2).into_iter().map(|p| v(sign * p.x, p.y)));
+            pts.push(v(sign * 0.50, 0.16));
+            pts
+        };
+        let mut bottom = vec![v(-0.14, 0.58), v(0.14, 0.58)];
+        bottom.extend(arc_pts(0.806, 76.4, 103.6));
+        let upper = [
+            v(-0.56, -0.20),
+            v(-0.30, -0.27),
+            v(0.30, -0.27),
+            v(0.56, -0.20),
+            v(0.60, 0.16),
+            v(-0.60, 0.16),
+        ];
+        let lower = [
+            v(-0.60, 0.15),
+            v(0.60, 0.15),
+            v(0.50, 0.36),
+            v(0.14, 0.60),
+            v(-0.14, 0.60),
+            v(-0.50, 0.36),
+        ];
+        for piece in [&spoke(-1.0)[..], &spoke(1.0), &bottom, &upper, &lower] {
+            d.poly(piece, theme::WHEEL_HUB, hub(theme::WHEEL_HUB));
+        }
+        let edge = Stroke::new(1.0, theme::WHEEL_HUB_EDGE);
+        let side = |sign: f32| -> Vec<Vec2> {
+            [(0.794, 0.10), (0.598, 0.14), (0.60, 0.16), (0.50, 0.36), (0.145, 0.60), (0.188, 0.777)]
+                .iter()
+                .map(|&(x, y)| v(sign * x, y))
+                .collect()
+        };
+        let top = [
+            v(-0.794, -0.10),
+            v(-0.5756, -0.06),
+            v(-0.56, -0.20),
+            v(-0.30, -0.27),
+            v(0.30, -0.27),
+            v(0.56, -0.20),
+            v(0.5756, -0.06),
+            v(0.794, -0.10),
+        ];
+        for line in [&top[..], &side(-1.0), &side(1.0)] {
+            let pts = line.iter().map(|&p| d.pt(p)).collect();
+            painter.add(Shape::line(pts, edge));
+        }
 
         // Centre badge: hexagon, no text.
         let hex: Vec<Vec2> = (0..6)
@@ -169,7 +200,7 @@ impl WheelView<'_> {
                 v(0.12 * a.cos(), 0.02 + 0.12 * a.sin())
             })
             .collect();
-        d.poly(&hex, theme::SURFACE, outline);
+        d.poly(&hex, theme::WHEEL_BUTTON, edge);
 
         self.paint_paddles(&d);
         self.paint_leds(&d);
@@ -184,7 +215,7 @@ impl WheelView<'_> {
             let (fill, stroke) = if pressed {
                 (theme::ACCENT, Stroke::new(1.0, theme::ACCENT))
             } else {
-                (theme::SURFACE, Stroke::new(1.0, theme::BORDER))
+                (theme::WHEEL_BUTTON, Stroke::new(1.0, theme::OUTLINE))
             };
             // Upper and lower parts (spec 7.2).
             let parts = [(0.66, -0.22, 0.26), (0.62, 0.34, 0.30)];
@@ -210,7 +241,7 @@ impl WheelView<'_> {
             if lit {
                 d.painter.circle_filled(pos, radius * d.r, led_color(i, n));
             } else {
-                d.painter.circle(pos, radius * d.r, theme::SURFACE, Stroke::new(1.0, theme::BORDER));
+                d.painter.circle(pos, radius * d.r, theme::WHEEL_BUTTON, Stroke::new(1.0, theme::WHEEL_HUB_EDGE));
             }
         }
     }
@@ -224,7 +255,7 @@ impl WheelView<'_> {
                 d.painter.circle_filled(pos, radius * 1.6, theme::ACCENT.gamma_multiply(0.25));
                 d.painter.circle_filled(pos, radius, theme::ACCENT);
             } else {
-                d.painter.circle(pos, radius, theme::SURFACE, Stroke::new(1.0, theme::BORDER));
+                d.painter.circle(pos, radius, theme::WHEEL_BUTTON, Stroke::new(1.0, theme::OUTLINE));
             }
         }
         let Some(label) = self.labels[spot.button as usize - 1] else {
@@ -236,10 +267,10 @@ impl WheelView<'_> {
             // Long names sit just below the spot, on the hub, so the colour
             // is read against the hub rather than the lit circle.
             let below = pos + Vec2::new(0.0, radius + size * 0.8);
-            let color = if pressed { theme::ACCENT } else { theme::TEXT_MUTED };
+            let color = if pressed { theme::ACCENT } else { theme::WHEEL_LABEL };
             d.painter.text(below, Align2::CENTER_CENTER, label, font, color);
         } else {
-            let color = if pressed { theme::ACCENT_TEXT } else { theme::TEXT_MUTED };
+            let color = if pressed { theme::ACCENT_TEXT } else { theme::WHEEL_LABEL };
             // The default fonts lack some arrow glyphs, so D-pad arrows are
             // drawn as upright triangles.
             if let Some(dir) = arrow_dir(label) {
