@@ -4,6 +4,7 @@ mod bridge;
 mod ffb_test;
 mod lights;
 mod panels;
+mod probe;
 mod state;
 mod theme;
 mod widgets;
@@ -46,12 +47,16 @@ pub struct MozaMapperApp {
     pub(crate) sweep_run: Option<Arc<AtomicBool>>,
     pub(crate) udp_thread: Option<thread::JoinHandle<()>>,
     pub(crate) udp_run: Option<Arc<AtomicBool>>,
+    // Environment probe: runs only while the bridge is stopped.
+    pub(crate) probe: probe::Probe,
 }
 
 impl MozaMapperApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         theme::apply(&cc.egui_ctx);
         let (config, config_error) = AppConfig::load_or_default();
+        let mut probe = probe::Probe::new();
+        probe.start();
         Self {
             state: AppState::new(),
             running: false,
@@ -74,6 +79,7 @@ impl MozaMapperApp {
             sweep_run: None,
             udp_thread: None,
             udp_run: None,
+            probe,
         }
     }
 }
@@ -98,6 +104,14 @@ impl eframe::App for MozaMapperApp {
             self.running = false;
         }
 
+        // The probe runs exactly while the bridge is stopped (it also restarts
+        // here when the bridge thread exited by itself).
+        if self.running {
+            self.probe.stop();
+        } else {
+            self.probe.start();
+        }
+
         // Per-frame logic that must not depend on which section is open.
         self.poll_wizard_result();
 
@@ -109,7 +123,11 @@ impl eframe::App for MozaMapperApp {
             .fill(theme::BG)
             .inner_margin(egui::Margin::same(theme::COLUMN_PADDING as i8));
         egui::CentralPanel::default().frame(central).show(ctx, |ui| {
-            panels::left_live::show(self, ui);
+            if self.running {
+                panels::left_live::show(self, ui);
+            } else {
+                panels::left_stopped::show(self, ui, ctx);
+            }
         });
     }
 }
@@ -219,5 +237,6 @@ impl Drop for MozaMapperApp {
         self.stop_ffb_test();
         self.stop_lights();
         self.stop_bridge();
+        self.probe.stop();
     }
 }

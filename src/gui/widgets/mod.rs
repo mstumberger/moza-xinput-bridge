@@ -8,7 +8,6 @@ use crate::gui::theme;
 pub enum Level {
     Good,
     Neutral,
-    #[allow(dead_code)]
     Warn,
     Bad,
 }
@@ -27,12 +26,10 @@ impl Level {
 
 // ---------------------------------------------------------------- icons
 
-#[allow(dead_code)]
 pub fn icon_dot(painter: &Painter, center: Pos2, radius: f32, color: Color32) {
     painter.circle_filled(center, radius, color);
 }
 
-#[allow(dead_code)]
 pub fn icon_check(painter: &Painter, center: Pos2, size: f32, color: Color32) {
     let h = size / 2.0;
     let pts = vec![
@@ -43,7 +40,6 @@ pub fn icon_check(painter: &Painter, center: Pos2, size: f32, color: Color32) {
     painter.add(Shape::line(pts, Stroke::new(2.0, color)));
 }
 
-#[allow(dead_code)]
 pub fn icon_cross(painter: &Painter, center: Pos2, size: f32, color: Color32) {
     let h = size * 0.35;
     let stroke = Stroke::new(2.0, color);
@@ -51,7 +47,6 @@ pub fn icon_cross(painter: &Painter, center: Pos2, size: f32, color: Color32) {
     painter.line_segment([center + Vec2::new(-h, h), center + Vec2::new(h, -h)], stroke);
 }
 
-#[allow(dead_code)]
 pub fn icon_warning(painter: &Painter, center: Pos2, size: f32, color: Color32) {
     let h = size / 2.0;
     let pts = vec![
@@ -88,7 +83,6 @@ pub fn icon_chevron_down(painter: &Painter, center: Pos2, size: f32, color: Colo
 }
 
 /// The icon that goes with a level: check, dot, warning triangle, cross.
-#[allow(dead_code)]
 pub fn icon_for_level(painter: &Painter, level: Level, center: Pos2, size: f32) {
     let c = level.color();
     match level {
@@ -208,7 +202,6 @@ pub fn result_card(ui: &mut egui::Ui, level: Level, title: &str, lines: &[String
 
 /// Checklist row: level icon, title, one-line detail, optional action button.
 /// Returns true when the action button was clicked.
-#[allow(dead_code)]
 pub fn checklist_row(
     ui: &mut egui::Ui,
     level: Level,
@@ -228,7 +221,7 @@ pub fn checklist_row(
                 let (rect, _) = ui.allocate_exact_size(Vec2::splat(18.0), Sense::hover());
                 icon_for_level(ui.painter(), level, rect.center(), 16.0);
                 ui.vertical(|ui| {
-                    ui.label(egui::RichText::new(title).strong());
+                    ui.label(egui::RichText::new(title).strong().color(theme::TEXT));
                     ui.add(
                         egui::Label::new(
                             egui::RichText::new(detail)

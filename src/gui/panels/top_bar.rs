@@ -2,6 +2,7 @@ use std::sync::atomic::Ordering;
 
 use eframe::egui;
 
+use crate::gui::probe::pills;
 use crate::gui::widgets::{status_pill, Level};
 use crate::gui::{theme, MozaMapperApp};
 
@@ -23,14 +24,9 @@ pub fn show(app: &mut MozaMapperApp, ctx: &egui::Context) {
                 ui.add_space(8.0);
 
                 let connected = *app.state.device_connected.lock().unwrap();
-                let (wheel_text, wheel_level) = if connected {
-                    ("Connected", Level::Good)
-                } else {
-                    ("Not found", Level::Neutral)
-                };
-                status_pill(ui, "Wheel", wheel_text, wheel_level);
-                // Task 4 wires this to the environment probe.
-                status_pill(ui, "Driver", "Checking", Level::Neutral);
+                let (wheel, driver) = pills(app.probe.snapshot(), app.running, connected);
+                status_pill(ui, "Wheel", wheel.0, wheel.1);
+                status_pill(ui, "Driver", driver.0, driver.1);
 
                 let ffb_active = app.state.ffb_active.load(Ordering::Relaxed);
                 let (ffb_text, ffb_level) = if !app.config.ffb_enabled {

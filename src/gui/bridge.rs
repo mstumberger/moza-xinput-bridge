@@ -17,6 +17,8 @@ impl MozaMapperApp {
             // split between the two handles and both learn/bridge garbage.
             return;
         }
+        // The probe must be gone before the bridge touches the wheel and ViGEm.
+        self.probe.stop();
         let state = self.state.clone();
         let config = self.config.clone();
         let stop = Arc::new(AtomicBool::new(false));
