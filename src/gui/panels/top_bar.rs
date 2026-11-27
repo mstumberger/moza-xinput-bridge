@@ -9,7 +9,7 @@ use crate::gui::{theme, MozaMapperApp};
 pub fn show(app: &mut MozaMapperApp, ctx: &egui::Context) {
     let frame = egui::Frame::new()
         .fill(theme::PANEL)
-        .stroke(egui::Stroke::new(1.0, theme::BORDER))
+        .stroke(egui::Stroke::new(1.0_f32, theme::BORDER))
         .inner_margin(egui::Margin::symmetric(theme::COLUMN_PADDING as i8, 0));
     egui::TopBottomPanel::top("header")
         .exact_height(theme::TOP_BAR_HEIGHT)

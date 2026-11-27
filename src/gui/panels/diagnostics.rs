@@ -100,7 +100,7 @@ fn raw_grid(ui: &mut egui::Ui, buttons: &[bool]) {
                     p.rect_stroke(
                         rect,
                         radius,
-                        egui::Stroke::new(1.0, if pressed { theme::ACCENT } else { theme::BORDER }),
+                        egui::Stroke::new(1.0_f32, if pressed { theme::ACCENT } else { theme::BORDER }),
                         egui::StrokeKind::Inside,
                     );
                     p.text(

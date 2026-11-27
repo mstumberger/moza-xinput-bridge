@@ -66,7 +66,7 @@ pub fn apply(ctx: &egui::Context) {
     v.extreme_bg_color = SURFACE;
     v.faint_bg_color = SURFACE;
     v.code_bg_color = SURFACE;
-    v.window_stroke = Stroke::new(1.0, BORDER);
+    v.window_stroke = Stroke::new(1.0_f32, BORDER);
     v.window_corner_radius = radius;
     v.menu_corner_radius = radius;
     v.hyperlink_color = INFO;
@@ -76,38 +76,38 @@ pub fn apply(ctx: &egui::Context) {
     // Also the slider's trailing fill.
     v.selection.bg_fill = ACCENT.gamma_multiply(0.6);
     v.slider_trailing_fill = true;
-    v.selection.stroke = Stroke::new(1.0, ACCENT);
+    v.selection.stroke = Stroke::new(1.0_f32, ACCENT);
 
     let w = &mut v.widgets;
     w.noninteractive.bg_fill = PANEL;
     w.noninteractive.weak_bg_fill = PANEL;
-    w.noninteractive.bg_stroke = Stroke::new(1.0, BORDER);
-    w.noninteractive.fg_stroke = Stroke::new(1.0, TEXT);
+    w.noninteractive.bg_stroke = Stroke::new(1.0_f32, BORDER);
+    w.noninteractive.fg_stroke = Stroke::new(1.0_f32, TEXT);
 
     // `bg_fill` is the slider rail and the checkbox box; `weak_bg_fill` the
     // button face.
     w.inactive.bg_fill = RAIL;
     w.inactive.weak_bg_fill = SURFACE;
-    w.inactive.bg_stroke = Stroke::new(1.0, OUTLINE);
-    w.inactive.fg_stroke = Stroke::new(1.0, TEXT);
+    w.inactive.bg_stroke = Stroke::new(1.0_f32, OUTLINE);
+    w.inactive.fg_stroke = Stroke::new(1.0_f32, TEXT);
 
     w.hovered.bg_fill = RAIL_HOVER;
     w.hovered.weak_bg_fill = SURFACE_HOVER;
-    w.hovered.bg_stroke = Stroke::new(1.0, OUTLINE);
-    w.hovered.fg_stroke = Stroke::new(1.5, TEXT);
+    w.hovered.bg_stroke = Stroke::new(1.0_f32, OUTLINE);
+    w.hovered.fg_stroke = Stroke::new(1.5_f32, TEXT);
 
     // egui takes `.strong()` text from `active.fg_stroke`, so it must be
     // light. Pressed widgets are therefore neutral with an accent outline;
     // accent-filled buttons set their own dark text explicitly.
     w.active.bg_fill = ACCENT;
     w.active.weak_bg_fill = RAIL;
-    w.active.bg_stroke = Stroke::new(1.0, ACCENT);
-    w.active.fg_stroke = Stroke::new(1.5, TEXT);
+    w.active.bg_stroke = Stroke::new(1.0_f32, ACCENT);
+    w.active.fg_stroke = Stroke::new(1.5_f32, TEXT);
 
     w.open.bg_fill = SURFACE_HOVER;
     w.open.weak_bg_fill = SURFACE_HOVER;
-    w.open.bg_stroke = Stroke::new(1.0, BORDER);
-    w.open.fg_stroke = Stroke::new(1.0, TEXT);
+    w.open.bg_stroke = Stroke::new(1.0_f32, BORDER);
+    w.open.fg_stroke = Stroke::new(1.0_f32, TEXT);
 
     for wv in [
         &mut w.noninteractive,

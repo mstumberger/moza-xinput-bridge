@@ -42,12 +42,12 @@ pub fn icon_check(painter: &Painter, center: Pos2, size: f32, color: Color32) {
         center + Vec2::new(-h * 0.2, h * 0.6),
         center + Vec2::new(h * 0.8, -h * 0.6),
     ];
-    painter.add(Shape::line(pts, Stroke::new(2.0, color)));
+    painter.add(Shape::line(pts, Stroke::new(2.0_f32, color)));
 }
 
 pub fn icon_cross(painter: &Painter, center: Pos2, size: f32, color: Color32) {
     let h = size * 0.35;
-    let stroke = Stroke::new(2.0, color);
+    let stroke = Stroke::new(2.0_f32, color);
     painter.line_segment([center + Vec2::new(-h, -h), center + Vec2::new(h, h)], stroke);
     painter.line_segment([center + Vec2::new(-h, h), center + Vec2::new(h, -h)], stroke);
 }
@@ -59,10 +59,10 @@ pub fn icon_warning(painter: &Painter, center: Pos2, size: f32, color: Color32) 
         center + Vec2::new(h, h * 0.8),
         center + Vec2::new(-h, h * 0.8),
     ];
-    painter.add(Shape::closed_line(pts, Stroke::new(1.5, color)));
+    painter.add(Shape::closed_line(pts, Stroke::new(1.5_f32, color)));
     painter.line_segment(
         [center + Vec2::new(0.0, -h * 0.3), center + Vec2::new(0.0, h * 0.2)],
-        Stroke::new(1.5, color),
+        Stroke::new(1.5_f32, color),
     );
     painter.circle_filled(center + Vec2::new(0.0, h * 0.5), 1.0, color);
 }
@@ -74,7 +74,7 @@ pub fn icon_chevron_right(painter: &Painter, center: Pos2, size: f32, color: Col
         center + Vec2::new(h * 0.5, 0.0),
         center + Vec2::new(-h * 0.5, h),
     ];
-    painter.add(Shape::line(pts, Stroke::new(1.5, color)));
+    painter.add(Shape::line(pts, Stroke::new(1.5_f32, color)));
 }
 
 pub fn icon_chevron_down(painter: &Painter, center: Pos2, size: f32, color: Color32) {
@@ -84,7 +84,7 @@ pub fn icon_chevron_down(painter: &Painter, center: Pos2, size: f32, color: Colo
         center + Vec2::new(0.0, h * 0.5),
         center + Vec2::new(h, -h * 0.5),
     ];
-    painter.add(Shape::line(pts, Stroke::new(1.5, color)));
+    painter.add(Shape::line(pts, Stroke::new(1.5_f32, color)));
 }
 
 /// The icon that goes with a level: check, dot, warning triangle, cross.
@@ -119,7 +119,7 @@ pub fn status_pill(ui: &mut egui::Ui, label: &str, text: &str, level: Level) -> 
         let p = ui.painter();
         let radius = CornerRadius::same(theme::RADIUS_PILL);
         p.rect_filled(rect, radius, theme::SURFACE);
-        p.rect_stroke(rect, radius, Stroke::new(1.0, theme::BORDER), StrokeKind::Inside);
+        p.rect_stroke(rect, radius, Stroke::new(1.0_f32, theme::BORDER), StrokeKind::Inside);
         p.circle_filled(Pos2::new(rect.left() + pad_x + dot_r, rect.center().y), dot_r, color);
         let text_pos = Pos2::new(
             rect.left() + pad_x + dot_r * 2.0 + gap,
@@ -152,7 +152,7 @@ pub fn toggle(ui: &mut egui::Ui, on: &mut bool, label: &str) -> egui::Response {
             };
             let outline = if *on { theme::ACCENT } else { theme::OUTLINE };
             p.rect_filled(rect, radius, fill);
-            p.rect_stroke(rect, radius, Stroke::new(1.0, outline), StrokeKind::Inside);
+            p.rect_stroke(rect, radius, Stroke::new(1.0_f32, outline), StrokeKind::Inside);
             let knob_r = track.y / 2.0 - 3.0;
             let x = egui::lerp(
                 (rect.left() + knob_r + 3.0)..=(rect.right() - knob_r - 3.0),
@@ -187,7 +187,7 @@ pub fn result_card(ui: &mut egui::Ui, level: Level, title: &str, lines: &[String
     let color = level.color();
     egui::Frame::new()
         .fill(color.gamma_multiply(0.12))
-        .stroke(Stroke::new(1.0, color.gamma_multiply(0.6)))
+        .stroke(Stroke::new(1.0_f32, color.gamma_multiply(0.6)))
         .corner_radius(CornerRadius::same(theme::RADIUS))
         .inner_margin(egui::Margin::same(10))
         .show(ui, |ui| {
@@ -215,7 +215,7 @@ pub fn checklist_row(
     let mut clicked = false;
     egui::Frame::new()
         .fill(theme::SURFACE)
-        .stroke(Stroke::new(1.0, theme::BORDER))
+        .stroke(Stroke::new(1.0_f32, theme::BORDER))
         .corner_radius(CornerRadius::same(theme::RADIUS))
         .inner_margin(egui::Margin::same(10))
         .show(ui, |ui| {
@@ -271,7 +271,7 @@ pub fn section(
         };
         let radius = CornerRadius::same(theme::RADIUS);
         p.rect_filled(rect, radius, fill);
-        p.rect_stroke(rect, radius, Stroke::new(1.0, theme::BORDER), StrokeKind::Inside);
+        p.rect_stroke(rect, radius, Stroke::new(1.0_f32, theme::BORDER), StrokeKind::Inside);
         let chev = Pos2::new(rect.left() + 16.0, rect.center().y);
         if is_open {
             icon_chevron_down(p, chev, 16.0, theme::TEXT);

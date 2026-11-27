@@ -126,7 +126,7 @@ fn steering_bar(ui: &mut egui::Ui, raw: u32) {
         let p = ui.painter();
         let radius = egui::CornerRadius::same(5);
         p.rect_filled(rect, radius, theme::BG);
-        p.rect_stroke(rect, radius, egui::Stroke::new(1.0, theme::OUTLINE), egui::StrokeKind::Inside);
+        p.rect_stroke(rect, radius, egui::Stroke::new(1.0_f32, theme::OUTLINE), egui::StrokeKind::Inside);
         let cx = rect.center().x;
         let x = cx + (pct / 100.0).clamp(-1.0, 1.0) * rect.width() / 2.0;
         let fill = egui::Rect::from_x_y_ranges(cx.min(x)..=cx.max(x), rect.y_range())
@@ -134,7 +134,7 @@ fn steering_bar(ui: &mut egui::Ui, raw: u32) {
         p.rect_filled(fill, egui::CornerRadius::same(2), theme::ACCENT);
         p.line_segment(
             [egui::pos2(cx, rect.top() - 2.0), egui::pos2(cx, rect.bottom() + 2.0)],
-            egui::Stroke::new(1.5, theme::TEXT),
+            egui::Stroke::new(1.5_f32, theme::TEXT),
         );
         ui.label(egui::RichText::new(format!("{pct:+.1} %")).monospace().color(theme::TEXT_MUTED));
     });

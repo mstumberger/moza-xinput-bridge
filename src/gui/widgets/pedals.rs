@@ -42,7 +42,7 @@ pub fn vertical(ui: &mut egui::Ui, values: [f64; 3], bar_h: f32) {
         let fill_h = bar_h * value.clamp(0.0, 1.0) as f32;
         let fill = Rect::from_min_max(egui::pos2(track.left(), track.bottom() - fill_h), track.max);
         p.rect_filled(fill, radius, color);
-        p.rect_stroke(track, radius, Stroke::new(1.0, theme::BORDER), StrokeKind::Inside);
+        p.rect_stroke(track, radius, Stroke::new(1.0_f32, theme::BORDER), StrokeKind::Inside);
         let cx = track.center().x;
         p.text(
             egui::pos2(cx, rect.top() + TEXT_H / 2.0),
@@ -91,7 +91,7 @@ pub fn horizontal(ui: &mut egui::Ui, values: [f64; 3], width: f32) {
             3.0,
             color,
         );
-        p.rect_stroke(track, 3.0, Stroke::new(1.0, theme::BORDER), StrokeKind::Inside);
+        p.rect_stroke(track, 3.0, Stroke::new(1.0_f32, theme::BORDER), StrokeKind::Inside);
         p.text(
             egui::pos2(row.right(), row.center().y),
             Align2::RIGHT_CENTER,

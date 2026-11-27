@@ -171,7 +171,7 @@ impl MozaMapperApp {
         }
         let frame = egui::Frame::new()
             .fill(theme::BAD.gamma_multiply(0.15))
-            .stroke(egui::Stroke::new(1.0, theme::BAD.gamma_multiply(0.6)))
+            .stroke(egui::Stroke::new(1.0_f32, theme::BAD.gamma_multiply(0.6)))
             .inner_margin(egui::Margin::symmetric(theme::COLUMN_PADDING as i8, 8));
         egui::TopBottomPanel::top("error_banner")
             .frame(frame)
@@ -214,7 +214,7 @@ impl MozaMapperApp {
         let mut changed = false;
         let frame = egui::Frame::new()
             .fill(theme::PANEL)
-            .stroke(egui::Stroke::new(1.0, theme::BORDER))
+            .stroke(egui::Stroke::new(1.0_f32, theme::BORDER))
             .inner_margin(egui::Margin::same(8));
         egui::SidePanel::right("sections")
             .exact_width(theme::RIGHT_COLUMN_WIDTH)

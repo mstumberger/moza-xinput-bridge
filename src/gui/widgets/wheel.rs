@@ -121,7 +121,7 @@ impl WheelView<'_> {
             (self.steer.clamp(-1.0, 1.0) as f32 * self.steering_range_deg / 2.0).to_radians();
         let r = rect.width() / 2.0;
         let d = Draw { painter, angle, center: rect.center(), r };
-        let hub = |fill: egui::Color32| Stroke::new(1.0, fill);
+        let hub = |fill: egui::Color32| Stroke::new(1.0_f32, fill);
 
         // Rim: a ring (96-gon, since egui 0.31 circle strokes are not centred)
         // with a dark outer and a light inner edge, and the top marker.
@@ -134,8 +134,8 @@ impl WheelView<'_> {
                 .collect()
         };
         painter.add(Shape::closed_line(circle(0.90), Stroke::new(0.20 * r, theme::WHEEL_RIM)));
-        painter.add(Shape::closed_line(circle(0.995), Stroke::new(1.5, theme::WHEEL_RIM_DARK)));
-        painter.add(Shape::closed_line(circle(0.805), Stroke::new(1.5, theme::WHEEL_RIM_LIGHT)));
+        painter.add(Shape::closed_line(circle(0.995), Stroke::new(1.5_f32, theme::WHEEL_RIM_DARK)));
+        painter.add(Shape::closed_line(circle(0.805), Stroke::new(1.5_f32, theme::WHEEL_RIM_LIGHT)));
         painter.line_segment(
             [d.pt(v(0.0, -0.99)), d.pt(v(0.0, -0.81))],
             Stroke::new((0.05 * r).max(2.0), theme::TEXT),
@@ -171,7 +171,7 @@ impl WheelView<'_> {
         for piece in [&spoke(-1.0)[..], &spoke(1.0), &bottom, &upper, &lower] {
             d.poly(piece, theme::WHEEL_HUB, hub(theme::WHEEL_HUB));
         }
-        let edge = Stroke::new(1.0, theme::WHEEL_HUB_EDGE);
+        let edge = Stroke::new(1.0_f32, theme::WHEEL_HUB_EDGE);
         let side = |sign: f32| -> Vec<Vec2> {
             [(0.794, 0.10), (0.598, 0.14), (0.60, 0.16), (0.50, 0.36), (0.145, 0.60), (0.188, 0.777)]
                 .iter()
@@ -213,9 +213,9 @@ impl WheelView<'_> {
         for (button, sign) in [(13u8, -1.0f32), (14, 1.0)] {
             let pressed = self.pressed(button);
             let (fill, stroke) = if pressed {
-                (theme::ACCENT, Stroke::new(1.0, theme::ACCENT))
+                (theme::ACCENT, Stroke::new(1.0_f32, theme::ACCENT))
             } else {
-                (theme::WHEEL_BUTTON, Stroke::new(1.0, theme::OUTLINE))
+                (theme::WHEEL_BUTTON, Stroke::new(1.0_f32, theme::OUTLINE))
             };
             // Upper and lower parts (spec 7.2).
             let parts = [(0.66, -0.22, 0.26), (0.62, 0.34, 0.30)];
@@ -241,7 +241,7 @@ impl WheelView<'_> {
             if lit {
                 d.painter.circle_filled(pos, radius * d.r, led_color(i, n));
             } else {
-                d.painter.circle(pos, radius * d.r, theme::WHEEL_BUTTON, Stroke::new(1.0, theme::WHEEL_HUB_EDGE));
+                d.painter.circle(pos, radius * d.r, theme::WHEEL_BUTTON, Stroke::new(1.0_f32, theme::WHEEL_HUB_EDGE));
             }
         }
     }
@@ -255,7 +255,7 @@ impl WheelView<'_> {
                 d.painter.circle_filled(pos, radius * 1.6, theme::ACCENT.gamma_multiply(0.25));
                 d.painter.circle_filled(pos, radius, theme::ACCENT);
             } else {
-                d.painter.circle(pos, radius, theme::WHEEL_BUTTON, Stroke::new(1.0, theme::OUTLINE));
+                d.painter.circle(pos, radius, theme::WHEEL_BUTTON, Stroke::new(1.0_f32, theme::OUTLINE));
             }
         }
         let Some(label) = self.labels[spot.button as usize - 1] else {
