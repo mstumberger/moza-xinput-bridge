@@ -207,7 +207,7 @@ pub fn checklist(p: ProbeState) -> Checklist {
         row(Level::Bad, "MOZA wheel", "Not found. Plug in the wheelbase and switch it on.", None)
     };
     let pit = if p.pit_house {
-        row(Level::Warn, "MOZA Pit House", "Running. Pedals may jitter while it is open.", None)
+        row(Level::Warn, "MOZA Pit House", "Running. Pedals may jitter and shift lights cannot connect while it is open.", None)
     } else {
         row(Level::Good, "MOZA Pit House", "Not running", None)
     };

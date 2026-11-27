@@ -196,7 +196,13 @@ impl MozaMapperApp {
     fn right_column(&mut self, ctx: &egui::Context) {
         let ffb_status = if self.config.ffb_enabled { "On" } else { "Off" };
         let test_status = if self.ffb_test.is_some() { "Open" } else { "" };
-        let lights_status = if self.config.rpm_lights.enabled { "On" } else { "Off" };
+        let lights_status = if self.lights.is_some() {
+            "On"
+        } else if self.config.rpm_lights.enabled && self.lights_error.is_some() {
+            "Error"
+        } else {
+            "Off"
+        };
 
         let mut open = self.config.ui.open_section.clone();
         let mut changed = false;

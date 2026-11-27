@@ -5,6 +5,20 @@ use std::time::Duration;
 
 use super::MozaMapperApp;
 
+/// Turn a raw serial-open error into something a user can act on. A COM
+/// port can be open in only one program at a time, and MOZA Pit House
+/// keeps the wheelbase port open while it runs.
+pub(crate) fn friendly_lights_error(raw: &str) -> String {
+    let lower = raw.to_lowercase();
+    if lower.contains("access is denied") || lower.contains("permission denied") {
+        "The wheelbase serial port is in use by another program. Close MOZA Pit House \
+         (including its tray icon), then press Retry."
+            .to_string()
+    } else {
+        raw.to_string()
+    }
+}
+
 impl MozaMapperApp {
     /// Start the shift-light controller + UDP listener from the current
     /// config. Threshold/max-rpm changes apply live via set_config; UDP
@@ -39,7 +53,7 @@ impl MozaMapperApp {
                 self.lights_handle = Some(handle);
                 self.lights_error = None;
             }
-            Err(e) => self.lights_error = Some(e),
+            Err(e) => self.lights_error = Some(friendly_lights_error(&e)),
         }
     }
 
@@ -92,5 +106,22 @@ impl MozaMapperApp {
                 handle.send_mask(0);
             }));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::friendly_lights_error;
+
+    #[test]
+    fn busy_port_names_pit_house() {
+        let m = friendly_lights_error("failed to open COM3: Access is denied.");
+        assert!(m.contains("Pit House") && m.contains("Retry"));
+    }
+
+    #[test]
+    fn other_errors_pass_through() {
+        let raw = "no MOZA serial port found (is the wheelbase connected?)";
+        assert_eq!(friendly_lights_error(raw), raw);
     }
 }

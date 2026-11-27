@@ -23,6 +23,11 @@ pub fn show(app: &mut MozaMapperApp, ui: &mut egui::Ui) {
     }
     widgets::note(ui, "Uses the wheelbase serial port.");
     if app.lights.is_none() && !preview {
+        // Enabled in the config but not running (e.g. the port was busy).
+        if app.config.rpm_lights.enabled && ui.button("Retry").clicked() {
+            app.lights_error = None;
+            app.start_lights();
+        }
         return;
     }
 

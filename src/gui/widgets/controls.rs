@@ -64,9 +64,9 @@ pub fn subheading(ui: &mut egui::Ui, text: &str) {
 pub fn error_line(ui: &mut egui::Ui, prefix: &str, error: &mut Option<String>) {
     let Some(err) = error.clone() else { return };
     ui.horizontal_wrapped(|ui| {
-        ui.colored_label(theme::BAD, format!("{prefix}: {err}"));
-        if ui.small_button("\u{00d7}").clicked() {
+        if ui.small_button("\u{00d7}").on_hover_text("Dismiss").clicked() {
             *error = None;
         }
+        ui.colored_label(theme::BAD, format!("{prefix}: {err}"));
     });
 }

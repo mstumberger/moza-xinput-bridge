@@ -115,7 +115,7 @@ Centered block, max width 460:
 |---|---|---|---|
 | ViGEm Bus Driver (required) | `Installed` | `Not installed. The virtual Xbox controller needs it.` | Button `Get the driver` opens `https://github.com/nefarius/ViGEmBus/releases` |
 | MOZA wheel (required) | `Connected over USB` | `Not found. Plug in the wheelbase and switch it on.` | none |
-| MOZA Pit House (advisory) | `Not running` | Warning: `Running. Pedals may jitter while it is open.` | none |
+| MOZA Pit House (advisory) | `Not running` | Warning: `Running. Pedals may jitter and shift lights cannot connect while it is open.` | none |
 
 3. Large Start button, 220x52, accent fill. Disabled with a muted hint
    `Fix the items above first` while a required item is bad. The top-bar Start
