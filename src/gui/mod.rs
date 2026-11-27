@@ -66,7 +66,7 @@ impl MozaMapperApp {
         let (config, config_error) = AppConfig::load_or_default();
         let mut probe = probe::Probe::new();
         probe.start();
-        Self {
+        let mut app = Self {
             state: AppState::new(),
             running: false,
             config,
@@ -92,7 +92,13 @@ impl MozaMapperApp {
             preview: preview::enabled(),
             preview_start: Instant::now(),
             preview_ffb_test: None,
+        };
+        // Shift lights enabled in the saved config connect at launch; without
+        // this they stayed off until the toggle was flipped off and on.
+        if app.config.rpm_lights.enabled && !app.preview {
+            app.start_lights();
         }
+        app
     }
 }
 
