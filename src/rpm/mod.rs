@@ -17,7 +17,7 @@ pub mod protocol;
 pub mod serial;
 pub mod telemetry;
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
@@ -39,9 +39,16 @@ pub struct LightsHandle {
     tx: Mutex<Sender<Cmd>>,
     run: Arc<AtomicBool>,
     cfg: Arc<RwLock<RpmLightsConfig>>,
+    /// Last LED mask the writer thread sent (read-only for the GUI).
+    mask: Arc<AtomicU16>,
 }
 
 impl LightsHandle {
+    /// The last LED mask the writer thread sent to the wheelbase.
+    pub fn current_mask(&self) -> u16 {
+        self.mask.load(Ordering::Relaxed)
+    }
+
     /// Update the live config (thresholds, max RPM, LED count) without a
     /// restart.
     pub fn set_config(&self, cfg: RpmLightsConfig) {
@@ -90,11 +97,14 @@ impl LightsController {
         let run = Arc::new(AtomicBool::new(true));
         let shared_cfg = Arc::new(RwLock::new(cfg));
         let run_thread = Arc::clone(&run);
+        let shared_mask = Arc::new(AtomicU16::new(0));
+        let thread_mask = Arc::clone(&shared_mask);
 
         let handle = Arc::new(LightsHandle {
             tx: Mutex::new(tx),
             run: Arc::clone(&run),
             cfg: Arc::clone(&shared_cfg),
+            mask: Arc::clone(&shared_mask),
         });
 
         let thread_cfg = Arc::clone(&shared_cfg);
@@ -108,11 +118,10 @@ impl LightsController {
                     }
                     // Drain commands for up to 100 ms, then keepalive.
                     match rx.recv_timeout(Duration::from_millis(100)) {
-                        Ok(Cmd::Rpm(rpm)) => {
+                        Ok(cmd) => {
                             let cfg = thread_cfg.read().unwrap().clone();
-                            last_mask = mask_for_rpm(rpm, &cfg);
+                            last_mask = apply_cmd(cmd, &cfg, &thread_mask);
                         }
-                        Ok(Cmd::Mask(mask)) => last_mask = mask,
                         Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
                         Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
                     }
@@ -122,6 +131,7 @@ impl LightsController {
                         log::warn!("rpm lights write failed: {}", e);
                     }
                 }
+                thread_mask.store(0, Ordering::Relaxed);
                 let _ = port.write_all(&protocol::led_mask_frame(0));
             })
             .map_err(|e| format!("failed to spawn rpm-lights thread: {}", e))?;
@@ -143,10 +153,24 @@ impl Drop for LightsController {
     }
 }
 
+/// Turn a command into the new LED mask and publish it for the GUI.
+fn apply_cmd(cmd: Cmd, cfg: &RpmLightsConfig, shared: &AtomicU16) -> u16 {
+    let mask = match cmd {
+        Cmd::Rpm(rpm) => mask_for_rpm(rpm, cfg),
+        Cmd::Mask(mask) => mask,
+    };
+    shared.store(mask, Ordering::Relaxed);
+    mask
+}
+
 /// LED bitmask for a target RPM: lights i is on when rpm/max_rpm reaches
 /// the i-th threshold. Thresholds are evenly spaced from `start_pct` to
 /// `end_pct` of max RPM across `num_leds` lights.
 pub fn mask_for_rpm(rpm: u16, cfg: &RpmLightsConfig) -> u16 {
+    // Engine off: always dark, even when the first light is set to 0 %.
+    if rpm == 0 {
+        return 0;
+    }
     let max = cfg.max_rpm.max(1) as f32;
     let pct = (rpm as f32 / max * 100.0).clamp(0.0, 100.0);
     let n = cfg.num_leds.clamp(1, 16) as u32;
@@ -220,4 +244,30 @@ mod tests {
         assert_eq!(mask_for_rpm(5_000, &c), 0);
         assert_eq!(mask_for_rpm(10_000, &c), 1); // num_leds clamps to 1
     }
+
+    #[test]
+    fn current_mask_follows_commands() {
+        let (tx, _rx) = std::sync::mpsc::channel::<Cmd>();
+        let handle = LightsHandle {
+            tx: Mutex::new(tx),
+            run: Arc::new(AtomicBool::new(true)),
+            cfg: Arc::new(RwLock::new(cfg())),
+            mask: Arc::new(AtomicU16::new(0)),
+        };
+        assert_eq!(handle.current_mask(), 0);
+        let c = cfg();
+        assert_eq!(apply_cmd(Cmd::Mask(0b101), &c, &handle.mask), 0b101);
+        assert_eq!(handle.current_mask(), 0b101);
+        apply_cmd(Cmd::Rpm(10_000), &c, &handle.mask);
+        assert_eq!(handle.current_mask(), 0x3FF);
+    }
+    #[test]
+    fn zero_start_is_a_rev_bar_from_idle() {
+        let cfg = RpmLightsConfig { start_pct: 0, end_pct: 100, max_rpm: 9000, num_leds: 10, ..RpmLightsConfig::default() };
+        assert_eq!(mask_for_rpm(0, &cfg), 0, "engine off is dark");
+        assert_eq!(mask_for_rpm(10, &cfg), 0b1, "any rpm lights the first LED");
+        assert_eq!(mask_for_rpm(4500, &cfg).count_ones(), 6);
+        assert_eq!(mask_for_rpm(9000, &cfg), 0x3FF);
+    }
+
 }

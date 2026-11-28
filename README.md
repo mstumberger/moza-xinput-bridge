@@ -11,8 +11,21 @@ drives the wheelbase motor itself.
 > Not affiliated with or endorsed by MOZA Racing. "MOZA" is used only to
 > describe the hardware this software works with.
 
+![The dashboard with the drawn wheel, pedal bars and settings sections](docs/img/dashboard.png)
+
+*The running view (captured in the built-in preview mode with synthetic input).*
+
 ## Features
 
+- **Dashboard**: status pills for wheel, driver, force feedback and shift
+  lights, a Start/Stop button that is always visible, and five collapsible
+  settings sections on the right.
+- **Start-up checklist**: before you start, the app checks the ViGEm driver,
+  the wheel and Pit House, names what is missing and links to the driver
+  download.
+- **Live wheel view**: a drawn wheel that rotates with your steering, buttons
+  that light up as you press them (labelled with the Xbox button they map to),
+  the shift-light strip, and throttle, brake and clutch bars.
 - **Full input bridge**: steering, throttle, brake, clutch and all wheel
   buttons to an X360 controller, polled at ~860 Hz.
 - **Force feedback**: the exact PID report sequence a real game sends through
@@ -77,13 +90,26 @@ The app runs windowed with no console. It logs to `%TEMP%\moza_mapper.log`.
 
 ## Usage
 
-1. Install the ViGEm Bus Driver and plug in the wheel.
-2. Start the app and click **Start**: a virtual Xbox 360 controller appears.
-3. **Force feedback**: enable it and set the gain (applied on the next Start).
-4. **FFB test**: click **Open FFB test**, then hold **Push left** or
-   **Push right**, or run **Auto pulse test** with your hands off the wheel.
-   It reports how far the wheel moved for each pulse.
-5. **Mapping wizard**: re-learn which wheel button drives each Xbox button.
+1. Install the ViGEm Bus Driver and plug in the wheel. The app opens to a
+   checklist that shows what is ready and what is missing.
+2. Click **Start** (in the top bar or in the checklist). A virtual Xbox 360
+   controller appears and the checklist turns into the live wheel view. Turn
+   the wheel and press buttons to see them respond. **Stop** ends the bridge.
+3. The right-hand column has five sections; opening one closes the others, and
+   the app remembers which was open.
+   - **Force feedback**: **Enable force feedback** and **Gain** (applied on the
+     next Start).
+   - **FFB test**: click **Open FFB test**, set **Strength**, then hold
+     **Push left** or **Push right**, or run **Auto pulse test** with your
+     hands off the wheel. The result card says how far the wheel moved for each
+     pulse. Use **Close FFB test** when done.
+   - **Shift lights**: **Enable shift lights**, then set **Max RPM**, **LEDs**
+     and the thresholds. Sources are **UDP telemetry** and **Controller
+     rumble**; **Manual RPM** and **Test sweep** let you try the lights.
+   - **Button mapping**: shows which wheel button drives each Xbox button.
+     **Re-learn mapping** starts the wizard (stop the bridge first).
+   - **Diagnostics**: raw button grid, **Steering range** (how far the drawn
+     wheel turns), report rate, **Open log file** and **Open config folder**.
 
 ### Default button mapping
 
@@ -91,8 +117,8 @@ Wheel button numbers are 1-based (Joystick Gremlin numbering).
 
 | Xbox | Wheel | Xbox | Wheel |
 |---|---|---|---|
-| A | 1 | LB | 17 |
-| B | 2 | RB | 18 |
+| A | 1 | LB (left paddle) | 13 |
+| B | 2 | RB (right paddle) | 14 |
 | X | 3 | LS | 33 |
 | Y | 4 | RS | 34 |
 | D-pad U/R/D/L | 5/6/7/8 | Back | 35 |
@@ -164,7 +190,7 @@ src/mapping    1-based button mapping + learning wizard
 src/output     ViGEm X360 target, report builder, FFB notifications
 src/ffb        HID PID force feedback: report encoding, Win32 transport, torque channel
 src/rpm        shift lights: serial frame protocol, COM port transport, UDP telemetry
-src/gui.rs     egui UI: bridge control, live state, wizard, FFB settings and test
+src/gui/        egui UI: dashboard, theme, drawn wheel, bridge control, wizard, FFB and lights
 src/bin        hid-probe and pedal_log diagnostics
 ```
 
@@ -178,10 +204,19 @@ src/bin        hid-probe and pedal_log diagnostics
 
 ## Releasing
 
-Create a GitHub release with a tag like `v0.4.0` targeting `main`. The
-[release workflow](.github/workflows/release.yml) builds from the tagged
-commit, attaches the zip, exe and checksums to the release, then pushes the
-version bump in `Cargo.toml` back to `main`.
+Run **Actions > Release build > Run workflow**, pick `main` and type the
+version, for example `0.0.1`. From a terminal:
+
+```powershell
+gh workflow run release.yml -f version=0.0.1
+```
+
+The [release workflow](.github/workflows/release.yml) builds that commit,
+creates the tag `v0.0.1` and the GitHub release, and attaches the zip, the
+exe, the dashboard screenshot and the checksums. The version is stamped into
+the build only; nothing is pushed back, so it works with branch protection.
+Publishing a release by hand with a `vX.Y.Z` tag also works: the workflow
+then attaches the files to it.
 
 Dev builds: add the `build` label to a pull request, or run **Actions > CI >
 Run workflow**. The build is uploaded as a workflow artifact named
@@ -189,8 +224,23 @@ Run workflow**. The build is uploaded as a workflow artifact named
 
 ```powershell
 cargo build --release
-powershell -ExecutionPolicy Bypass -File tools\package.ps1 -Version 0.4.0
+powershell -ExecutionPolicy Bypass -File tools\package.ps1 -Version 0.0.1
 ```
+
+## Development
+
+Set `MOZA_GUI_PREVIEW=1` to run the GUI with synthetic input: the running view
+and the hardware-only section bodies are shown without opening any device.
+`tools\capture_window.ps1` saves a window to a PNG, which is how the screenshot
+above was made:
+
+```powershell
+$env:MOZA_GUI_PREVIEW = '1'; .\target\debug\moza-xinput-bridge.exe
+powershell -ExecutionPolicy Bypass -File tools\capture_window.ps1 -ProcName moza-xinput-bridge -Out shot.png
+```
+
+The app icon is generated by `tools\make_icon.ps1` (writes `assets\icon.ico` and
+`assets\icon-256.png`); `build.rs` embeds it in the executables.
 
 ## Contributing
 

@@ -1,6 +1,6 @@
 [package]
 name = "moza-xinput-bridge"
-version = "0.3.0"
+version = "0.0.1"
 edition = "2021"
 description = "MOZA R3 racing wheel to virtual Xbox 360 controller bridge with native HID PID force feedback"
 license = "MIT"
@@ -14,6 +14,7 @@ windows-sys = { version = "0.52", features = [
     "Win32_Devices_HumanInterfaceDevice",
     "Win32_Foundation",
     "Win32_Storage_FileSystem",
+    "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_IO",
 ] }
 serde = { version = "1.0", features = ["derive"] }
@@ -25,6 +26,9 @@ eframe = "0.31"
 log = "0.4"
 serialport = "4"
 env_logger = "0.11"
+
+[build-dependencies]
+winresource = "0.1"
 
 [profile.release]
 opt-level = 3

@@ -83,8 +83,8 @@ impl MappingConfig {
             ("DPAD_RIGHT", 6),
             ("DPAD_DOWN", 7),
             ("DPAD_LEFT", 8),
-            ("LB", 17),
-            ("RB", 18),
+            ("LB", 13),
+            ("RB", 14),
             ("Guide", 38),
             ("Back", 35),
             ("Start", 36),
@@ -145,6 +145,24 @@ impl Default for RpmLightsConfig {
     }
 }
 
+/// GUI-only settings. Absent in older configs -> defaults.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct UiConfig {
+    /// Id of the open accordion section; "" = all closed.
+    pub open_section: String,
+    /// Steering lock-to-lock in degrees, used only to rotate the drawn wheel.
+    pub steering_range_deg: u16,
+}
+
+impl Default for UiConfig {
+    fn default() -> Self {
+        Self {
+            open_section: "ffb".to_string(),
+            steering_range_deg: 900,
+        }
+    }
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct AppConfig {
     pub mapping: MappingConfig,
@@ -154,6 +172,8 @@ pub struct AppConfig {
     /// Absent in older configs -> defaults (lights off).
     #[serde(default)]
     pub rpm_lights: RpmLightsConfig,
+    #[serde(default)]
+    pub ui: UiConfig,
 }
 
 impl Default for AppConfig {
@@ -164,6 +184,7 @@ impl Default for AppConfig {
             ffb_enabled: true,
             ffb_gain: 1.0,
             rpm_lights: RpmLightsConfig::default(),
+            ui: UiConfig::default(),
         }
     }
 }
@@ -321,8 +342,8 @@ mod tests {
         assert_eq!(m.lookup("DPAD_RIGHT"), 6);
         assert_eq!(m.lookup("DPAD_DOWN"), 7);
         assert_eq!(m.lookup("DPAD_LEFT"), 8);
-        assert_eq!(m.lookup("LB"), 17);
-        assert_eq!(m.lookup("RB"), 18);
+        assert_eq!(m.lookup("LB"), 13);
+        assert_eq!(m.lookup("RB"), 14);
         assert_eq!(m.lookup("Guide"), 38);
         assert_eq!(m.lookup("Back"), 35);
         assert_eq!(m.lookup("Start"), 36);
@@ -384,6 +405,27 @@ mod tests {
         let (cfg, err) = AppConfig::load_or_default_from(&dir);
         assert!(err.is_some(), "corrupt config should surface an error");
         assert_eq!(cfg.mapping.lookup("A"), 1);
+    }
+
+    #[test]
+    fn ui_defaults() {
+        let ui = UiConfig::default();
+        assert_eq!(ui.open_section, "ffb");
+        assert_eq!(ui.steering_range_deg, 900);
+        let cfg = AppConfig::default();
+        assert_eq!(cfg.ui.open_section, "ffb");
+        assert_eq!(cfg.ui.steering_range_deg, 900);
+    }
+
+    #[test]
+    fn config_without_ui_key_loads_defaults() {
+        let dir = temp_subdir("no_ui");
+        let mut value = serde_json::to_value(AppConfig::default()).unwrap();
+        value.as_object_mut().unwrap().remove("ui").expect("ui key present");
+        std::fs::write(dir.join("app.json"), serde_json::to_string(&value).unwrap()).unwrap();
+        let loaded = AppConfig::load_from(&dir).unwrap();
+        assert_eq!(loaded.ui.open_section, "ffb");
+        assert_eq!(loaded.ui.steering_range_deg, 900);
     }
 
     #[test]

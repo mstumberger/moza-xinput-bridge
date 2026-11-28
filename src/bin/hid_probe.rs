@@ -44,6 +44,20 @@ fn main() {
         run_release();
         return;
     }
+    if let Some(i) = args.iter().position(|a| a == "--led-walk") {
+        let secs = args.get(i + 1).and_then(|v| v.parse().ok()).unwrap_or(3.0);
+        run_led_walk(secs);
+        return;
+    }
+    if let Some(i) = args.iter().position(|a| a == "--led-mask") {
+        let mask = args
+            .get(i + 1)
+            .and_then(|v| u32::from_str_radix(v.trim_start_matches("0x"), 16).ok())
+            .unwrap_or(0);
+        let secs = args.get(i + 2).and_then(|v| v.parse().ok()).unwrap_or(4.0);
+        run_led_mask(mask, secs);
+        return;
+    }
     if args.iter().any(|a| a == "--torque-out") {
         run_torque_out();
         return;
@@ -887,4 +901,55 @@ fn run_ffb_test() {
         let _ = send(vec![0x0C, 0x03]); // stop all
     }
     println!("vendor torque test done");
+}
+
+/// Shift-light frame with a full 32-bit value in the four bytes after the
+/// `FD DE` prefix (the app only uses the low 16 bits).
+fn led_frame32(value: u32) -> Vec<u8> {
+    let b = value.to_be_bytes();
+    moza_xinput_bridge::rpm::protocol::frame(0x1841, &[0xFD, 0xDE, b[0], b[1], b[2], b[3]])
+}
+
+fn hold_led_value(port: &mut dyn std::io::Write, value: u32, secs: f64) {
+    let start = Instant::now();
+    while start.elapsed().as_secs_f64() < secs {
+        if let Err(e) = port.write_all(&led_frame32(value)) {
+            println!("  write error: {}", e);
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+}
+
+/// Light one bit at a time so the bit -> physical LED mapping can be read
+/// off the wheel. Close the app and Pit House first (they hold the port).
+fn run_led_walk(secs: f64) {
+    println!("== shift-light bit walk ({secs} s per bit) ==");
+    let mut port = match moza_xinput_bridge::rpm::serial::open_moza_serial() {
+        Ok(p) => p,
+        Err(e) => {
+            println!("open failed: {}", e);
+            return;
+        }
+    };
+    hold_led_value(&mut *port, 0, 1.0);
+    for bit in 0..20u32 {
+        println!("bit {bit:2}  (value 0x{:08X})", 1u32 << bit);
+        hold_led_value(&mut *port, 1 << bit, secs);
+    }
+    hold_led_value(&mut *port, 0, 0.5);
+    println!("walk done, lights off");
+}
+
+/// Hold one raw value for a few seconds.
+fn run_led_mask(value: u32, secs: f64) {
+    println!("== shift-light value 0x{value:08X} for {secs} s ==");
+    match moza_xinput_bridge::rpm::serial::open_moza_serial() {
+        Ok(mut port) => {
+            hold_led_value(&mut *port, value, secs);
+            hold_led_value(&mut *port, 0, 0.3);
+            println!("done, lights off");
+        }
+        Err(e) => println!("open failed: {}", e),
+    }
 }
